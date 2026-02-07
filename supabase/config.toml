@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.execute-agent-trade]
 verify_jwt = false
+
+[functions.claim-usdc-faucet]
+verify_jwt = false
