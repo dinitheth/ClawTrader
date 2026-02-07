@@ -5,23 +5,62 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Target, Clock, Zap, Users, Loader2 } from "lucide-react";
-import { matchService, bettingService } from '@/lib/api';
+import { matchService, bettingService, profileService } from '@/lib/api';
 import { useAccount } from 'wagmi';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const Betting = () => {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const { toast } = useToast();
   const [matches, setMatches] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [betAmounts, setBetAmounts] = useState<Record<string, number>>({});
   const [userStats, setUserStats] = useState({
-    balance: 2450,
-    activeBets: 3,
-    winRate: 58,
-    totalWon: 1230,
+    balance: 0,
+    activeBets: 0,
+    winRate: 0,
+    totalWon: 0,
   });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // Load user stats from database
+  useEffect(() => {
+    const loadUserStats = async () => {
+      if (!address) {
+        setUserStats({ balance: 0, activeBets: 0, winRate: 0, totalWon: 0 });
+        setIsLoadingStats(false);
+        return;
+      }
+
+      try {
+        const profile = await profileService.getByWallet(address);
+        
+        if (profile) {
+          // Calculate real stats from bets
+          const bets = await bettingService.getUserBets(profile.id);
+          const activeBets = bets.filter(b => !b.is_settled).length;
+          const settledBets = bets.filter(b => b.is_settled);
+          const wonBets = settledBets.filter(b => b.is_won);
+          const winRate = settledBets.length > 0 ? (wonBets.length / settledBets.length) * 100 : 0;
+          const totalWon = wonBets.reduce((sum, b) => sum + (b.actual_payout || 0), 0);
+
+          setUserStats({
+            balance: profile.claw_balance || 0,
+            activeBets,
+            winRate: Math.round(winRate),
+            totalWon: Math.round(totalWon),
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user stats:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    loadUserStats();
+  }, [address]);
 
   useEffect(() => {
     loadMatches();
@@ -165,8 +204,8 @@ const Betting = () => {
                 
                 const [odds1, odds2] = calculateOdds(match.agent1, match.agent2);
                 const isLive = match.status === 'active';
-                const totalBets = Math.floor(Math.random() * 30000) + 5000; // Demo
-                const bettors = Math.floor(Math.random() * 200) + 50; // Demo
+                const totalBets = match.total_pot || 0;
+                const bettors = 0; // Will be calculated from actual bet counts
 
                 return (
                   <Card key={match.id} className="card-glow border-border overflow-hidden">

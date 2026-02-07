@@ -79,32 +79,31 @@ export function FaucetButton() {
     }
   };
 
-  if (!isConnected) {
-    return null;
-  }
-
   return (
     <Button
       onClick={handleClaim}
       disabled={isClaiming || claimed}
-      variant="outline"
+      variant="default"
       size="sm"
-      className="rounded-full h-9 px-3 gap-1.5 border-accent/50 text-accent hover:bg-accent/10"
+      className="rounded-full h-9 px-4 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-md"
     >
       {isClaiming ? (
         <>
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin" />
           <span className="hidden sm:inline">Claiming...</span>
+          <span className="sm:hidden">...</span>
         </>
       ) : claimed ? (
         <>
-          <CheckCircle className="w-3.5 h-3.5" />
+          <CheckCircle className="w-4 h-4" />
           <span className="hidden sm:inline">Claimed!</span>
+          <span className="sm:hidden">Done</span>
         </>
       ) : (
         <>
-          <Droplets className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Faucet</span>
+          <Droplets className="w-4 h-4" />
+          <span className="hidden sm:inline">Get USDC</span>
+          <span className="sm:hidden">USDC</span>
         </>
       )}
     </Button>
