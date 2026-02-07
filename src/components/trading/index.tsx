@@ -3,3 +3,4 @@ export { SymbolSelector } from './SymbolSelector';
 export { IntervalSelector } from './IntervalSelector';
 export { FundAgentModal } from './FundAgentModal';
 export { AgentPortfolio } from './AgentPortfolio';
+export { ExecuteTradeModal } from './ExecuteTradeModal';
