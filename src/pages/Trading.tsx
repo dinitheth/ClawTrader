@@ -5,6 +5,7 @@ import { TradingViewChart, SymbolSelector, IntervalSelector } from '@/components
 import { FundAgentModal } from '@/components/trading/FundAgentModal';
 import { AgentPortfolio } from '@/components/trading/AgentPortfolio';
 import { ExecuteTradeModal } from '@/components/trading/ExecuteTradeModal';
+import { LatestDecisionCard } from '@/components/trading/LatestDecisionCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -314,19 +315,27 @@ const Trading = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chart */}
-          <div className="lg:col-span-2">
+          {/* Left Column: Chart + Latest AI Decision */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Chart */}
             <Card className="overflow-hidden">
-              <div className="h-[500px]">
+              <div className="h-[400px]">
                 <TradingViewChart
                   symbol={symbol}
                   interval={chartInterval}
                   theme={theme === 'dark' ? 'dark' : 'light'}
-                  height={500}
+                  height={400}
                   autosize={false}
                 />
               </div>
             </Card>
+
+            {/* Latest AI Decision Card - Below Chart */}
+            <LatestDecisionCard
+              decision={decision}
+              agentName={selectedAgent?.name}
+              timestamp={analysisHistory[0]?.timestamp}
+            />
           </div>
 
           {/* AI Analysis Panel */}
@@ -474,71 +483,21 @@ const Trading = () => {
               />
             )}
 
-            {/* AI Decision */}
-            {decision && (
-              <Card className="border-primary/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-primary" />
-                    Latest AI Decision
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Badge className={`text-lg px-4 py-2 ${getActionColor(decision.action)}`}>
-                      {getActionIcon(decision.action)}
-                      <span className="ml-2">{decision.action}</span>
-                    </Badge>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">{decision.confidence}%</div>
-                      <div className="text-xs text-muted-foreground">Confidence</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <p className="text-muted-foreground mb-1">Reasoning</p>
-                      <p className="text-xs">{decision.reasoning}</p>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 pt-2">
-                      <div className="text-center p-2 rounded bg-muted/30">
-                        <p className="text-xs text-muted-foreground">Size</p>
-                        <p className="font-mono">{decision.suggestedAmount}%</p>
-                      </div>
-                      {decision.stopLoss && (
-                        <div className="text-center p-2 rounded bg-destructive/10">
-                          <p className="text-xs text-destructive">Stop Loss</p>
-                          <p className="font-mono text-xs">${decision.stopLoss.toLocaleString()}</p>
-                        </div>
-                      )}
-                      {decision.takeProfit && (
-                        <div className="text-center p-2 rounded bg-accent/10">
-                          <p className="text-xs text-accent">Take Profit</p>
-                          <p className="font-mono text-xs">${decision.takeProfit.toLocaleString()}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Execute Trade Button */}
-                    {decision.action !== 'HOLD' && (
-                      <Button
-                        onClick={() => setShowExecuteModal(true)}
-                        disabled={agentBalance <= 0}
-                        className={`w-full gap-2 mt-4 ${
-                          decision.action === 'BUY' 
-                            ? 'bg-gradient-to-r from-accent to-accent/80' 
-                            : 'bg-gradient-to-r from-destructive to-destructive/80'
-                        }`}
-                      >
-                        <Zap className="w-4 h-4" />
-                        Execute {decision.action} on Monad DEX
-                        <ExternalLink className="w-3 h-3" />
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Execute Trade Button (when decision exists) */}
+            {decision && decision.action !== 'HOLD' && (
+              <Button
+                onClick={() => setShowExecuteModal(true)}
+                disabled={agentBalance <= 0}
+                className={`w-full gap-2 ${
+                  decision.action === 'BUY' 
+                    ? 'bg-gradient-to-r from-accent to-accent/80' 
+                    : 'bg-gradient-to-r from-destructive to-destructive/80'
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                Execute {decision.action} on Monad DEX
+                <ExternalLink className="w-3 h-3" />
+              </Button>
             )}
 
             {/* No Balance Warning */}
