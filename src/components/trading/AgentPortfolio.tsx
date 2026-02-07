@@ -52,8 +52,8 @@ export function AgentPortfolio({ agent, trades, isTrading }: AgentPortfolioProps
         {/* Balance Display */}
         <div className="text-center p-4 rounded-lg bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20">
           <p className="text-sm text-muted-foreground mb-1">Trading Balance</p>
-          <p className="text-3xl font-bold font-mono">{agent.balance.toFixed(4)}</p>
-          <p className="text-sm text-muted-foreground">MON</p>
+          <p className="text-3xl font-bold font-mono">{agent.balance.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">USDC</p>
         </div>
 
         {/* PnL */}
@@ -61,7 +61,7 @@ export function AgentPortfolio({ agent, trades, isTrading }: AgentPortfolioProps
           <div className="p-3 rounded-lg bg-muted/30 text-center">
             <p className="text-xs text-muted-foreground mb-1">Total P&L</p>
             <p className={`text-lg font-mono font-semibold ${totalPnl >= 0 ? 'text-accent' : 'text-destructive'}`}>
-              {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(4)}
+              {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}
             </p>
             <p className={`text-xs ${pnlPercentage >= 0 ? 'text-accent' : 'text-destructive'}`}>
               {pnlPercentage >= 0 ? '+' : ''}{pnlPercentage.toFixed(2)}%
@@ -106,10 +106,10 @@ export function AgentPortfolio({ agent, trades, isTrading }: AgentPortfolioProps
                     <span className="text-muted-foreground">{trade.symbol}</span>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono">{trade.amount.toFixed(4)} MON</p>
+                    <p className="font-mono">{trade.amount.toFixed(2)} USDC</p>
                     {trade.pnl !== undefined && (
                       <p className={`${trade.pnl >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                        {trade.pnl >= 0 ? '+' : ''}{trade.pnl.toFixed(4)}
+                        {trade.pnl >= 0 ? '+' : ''}{trade.pnl.toFixed(2)}
                       </p>
                     )}
                   </div>

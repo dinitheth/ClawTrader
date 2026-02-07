@@ -5,3 +5,4 @@ export { FundAgentModal } from './FundAgentModal';
 export { AgentPortfolio } from './AgentPortfolio';
 export { ExecuteTradeModal } from './ExecuteTradeModal';
 export { LatestDecisionCard } from './LatestDecisionCard';
+export { CryptoNewsCard } from './CryptoNewsCard';

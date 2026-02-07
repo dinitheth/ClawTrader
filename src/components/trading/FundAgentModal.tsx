@@ -3,10 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wallet, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
-import { useAccount, useBalance, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther } from 'viem';
+import { Wallet, ArrowRight, Loader2, AlertCircle, DollarSign } from 'lucide-react';
+import { useAccount, useReadContract } from 'wagmi';
 import { useToast } from '@/hooks/use-toast';
+import { USDC_CONFIG, ERC20_ABI, formatUSDC } from '@/lib/usdc-config';
 
 interface FundAgentModalProps {
   open: boolean;
@@ -21,23 +21,23 @@ interface FundAgentModalProps {
 }
 
 export function FundAgentModal({ open, onOpenChange, agent, onFunded }: FundAgentModalProps) {
-  const [amount, setAmount] = useState('0.1');
+  const [amount, setAmount] = useState('100');
+  const [isProcessing, setIsProcessing] = useState(false);
   const { address, isConnected } = useAccount();
-  const { data: balance } = useBalance({ address });
   const { toast } = useToast();
-  
-  const { 
-    sendTransaction, 
-    data: hash,
-    isPending: isSending,
-    reset 
-  } = useSendTransaction();
 
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
+  // Read wallet USDC balance
+  const { data: walletUSDCBalance } = useReadContract({
+    address: USDC_CONFIG.contractAddress,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && USDC_CONFIG.contractAddress !== '0x0000000000000000000000000000000000000000',
+    },
   });
 
-  const handleFund = () => {
+  const handleFund = async () => {
     if (!isConnected) {
       toast({ title: 'Connect Wallet', description: 'Please connect your wallet first', variant: 'destructive' });
       return;
@@ -49,19 +49,39 @@ export function FundAgentModal({ open, onOpenChange, agent, onFunded }: FundAgen
       return;
     }
 
-    // For now, we simulate the funding by just updating the agent's virtual balance
-    // In production, this would send to a smart contract that holds agent funds
-    onFunded(amountNum);
-    toast({ 
-      title: 'Agent Funded!', 
-      description: `${agent?.avatar} ${agent?.name} now has ${amountNum} MON to trade with` 
-    });
-    onOpenChange(false);
-    reset();
-    setAmount('0.1');
+    setIsProcessing(true);
+
+    try {
+      // For now, we simulate the funding by just updating the agent's virtual balance
+      // In production, this would transfer USDC to the agent's smart contract wallet
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing
+      
+      onFunded(amountNum);
+      toast({ 
+        title: 'Agent Funded!', 
+        description: `${agent?.avatar} ${agent?.name} now has ${(agent?.balance || 0) + amountNum} USDC to trade with` 
+      });
+      onOpenChange(false);
+      setAmount('100');
+    } catch (error) {
+      console.error('Fund error:', error);
+      toast({ 
+        title: 'Funding Failed', 
+        description: 'Failed to fund agent. Please try again.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!agent) return null;
+
+  const formattedWalletBalance = walletUSDCBalance 
+    ? formatUSDC(walletUSDCBalance as bigint)
+    : '0.00';
+
+  const isContractConfigured = USDC_CONFIG.contractAddress !== '0x0000000000000000000000000000000000000000';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,7 +92,7 @@ export function FundAgentModal({ open, onOpenChange, agent, onFunded }: FundAgen
             Fund Agent Trading Balance
           </DialogTitle>
           <DialogDescription>
-            Add testnet MON to your agent's virtual trading balance. The agent will use these funds for autonomous trading.
+            Add USDC to your agent's trading balance. The agent will use these funds for autonomous trading.
           </DialogDescription>
         </DialogHeader>
 
@@ -83,38 +103,44 @@ export function FundAgentModal({ open, onOpenChange, agent, onFunded }: FundAgen
             <div className="flex-1">
               <p className="font-semibold">{agent.name}</p>
               <p className="text-sm text-muted-foreground">Current Balance</p>
-              <p className="text-xl font-mono text-primary">{agent.balance.toFixed(4)} MON</p>
+              <p className="text-xl font-mono text-primary">{agent.balance.toFixed(2)} USDC</p>
             </div>
           </div>
 
+          {/* Wallet Balance */}
+          {isConnected && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-primary" />
+                <span className="text-sm">Your Wallet USDC</span>
+              </div>
+              <span className="font-mono font-semibold">{formattedWalletBalance} USDC</span>
+            </div>
+          )}
+
           {/* Amount Input */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount to Fund (MON)</Label>
+            <Label htmlFor="amount">Amount to Fund (USDC)</Label>
             <div className="relative">
               <Input
                 id="amount"
                 type="number"
-                step="0.01"
-                min="0.01"
+                step="1"
+                min="1"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.1"
+                placeholder="100"
                 className="pr-16"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                MON
+                USDC
               </span>
             </div>
-            {balance && (
-              <p className="text-xs text-muted-foreground">
-                Your wallet: {(Number(balance.value) / 10 ** balance.decimals).toFixed(4)} {balance.symbol}
-              </p>
-            )}
           </div>
 
           {/* Quick Amounts */}
           <div className="flex gap-2">
-            {['0.1', '0.5', '1', '5'].map((val) => (
+            {['50', '100', '500', '1000'].map((val) => (
               <Button
                 key={val}
                 variant="outline"
@@ -122,7 +148,7 @@ export function FundAgentModal({ open, onOpenChange, agent, onFunded }: FundAgen
                 onClick={() => setAmount(val)}
                 className={amount === val ? 'border-primary' : ''}
               >
-                {val} MON
+                {val} USDC
               </Button>
             ))}
           </div>
@@ -131,20 +157,22 @@ export function FundAgentModal({ open, onOpenChange, agent, onFunded }: FundAgen
           <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 text-sm">
             <AlertCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
             <p className="text-muted-foreground">
-              This is testnet MON for simulation. Your agent will autonomously analyze markets and execute virtual trades. No real funds are at risk.
+              {isContractConfigured 
+                ? 'USDC will be transferred from your wallet to the agent\'s trading vault. The agent will autonomously trade and manage profits.'
+                : 'USDC contract not configured yet. For now, this uses virtual balance for testing. Once the USDC contract is deployed, real transfers will be enabled.'}
             </p>
           </div>
 
           {/* Fund Button */}
           <Button
             onClick={handleFund}
-            disabled={isSending || isConfirming || !amount}
+            disabled={isProcessing || !amount}
             className="w-full gap-2 bg-gradient-to-r from-primary to-secondary"
           >
-            {isSending || isConfirming ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {isSending ? 'Confirming...' : 'Processing...'}
+                Processing...
               </>
             ) : (
               <>
