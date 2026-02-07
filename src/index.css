@@ -2,95 +2,89 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* ClawTrader Design System - Fierce Trading Arena */
+/* Dark theme with neon accents, competitive vibe */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core dark background palette */
+    --background: 220 20% 4%;
+    --foreground: 60 10% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Card with subtle glass effect */
+    --card: 220 20% 7%;
+    --card-foreground: 60 10% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* Popover matching card */
+    --popover: 220 20% 7%;
+    --popover-foreground: 60 10% 95%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Electric cyan - main action color */
+    --primary: 180 100% 50%;
+    --primary-foreground: 220 20% 4%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary: Deep purple accent */
+    --secondary: 280 80% 60%;
+    --secondary-foreground: 60 10% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted for subtle text */
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 55%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent: Neon yellow for highlights */
+    --accent: 45 100% 55%;
+    --accent-foreground: 220 20% 4%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive: Red for danger/losses */
+    --destructive: 0 85% 55%;
+    --destructive-foreground: 60 10% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Success: Green for wins/profits */
+    --success: 150 80% 45%;
+    --success-foreground: 220 20% 4%;
 
-    --radius: 0.5rem;
+    /* Warning: Orange for caution */
+    --warning: 30 100% 50%;
+    --warning-foreground: 220 20% 4%;
 
-    --sidebar-background: 0 0% 98%;
+    /* Border and input styling */
+    --border: 220 20% 15%;
+    --input: 220 20% 12%;
+    --ring: 180 100% 50%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --radius: 0.75rem;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Sidebar theme */
+    --sidebar-background: 220 20% 5%;
+    --sidebar-foreground: 60 10% 90%;
+    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary-foreground: 220 20% 4%;
+    --sidebar-accent: 280 80% 60%;
+    --sidebar-accent-foreground: 60 10% 95%;
+    --sidebar-border: 220 20% 12%;
+    --sidebar-ring: 180 100% 50%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Chart colors */
+    --chart-1: 180 100% 50%;
+    --chart-2: 280 80% 60%;
+    --chart-3: 45 100% 55%;
+    --chart-4: 150 80% 45%;
+    --chart-5: 0 85% 55%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Custom gradient variables */
+    --gradient-primary: linear-gradient(135deg, hsl(180 100% 50%) 0%, hsl(200 100% 45%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(280 80% 60%) 0%, hsl(320 80% 50%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(150 80% 45%) 0%, hsl(180 80% 40%) 100%);
+    --gradient-danger: linear-gradient(135deg, hsl(0 85% 55%) 0%, hsl(20 90% 50%) 100%);
+    --gradient-arena: linear-gradient(180deg, hsl(220 20% 4%) 0%, hsl(220 25% 8%) 50%, hsl(220 20% 4%) 100%);
+    
+    /* Glow effects */
+    --glow-primary: 0 0 20px hsl(180 100% 50% / 0.4);
+    --glow-secondary: 0 0 20px hsl(280 80% 60% / 0.4);
+    --glow-success: 0 0 20px hsl(150 80% 45% / 0.4);
+    --glow-danger: 0 0 20px hsl(0 85% 55% / 0.4);
   }
 }
 
@@ -101,5 +95,180 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Orbitron', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer components {
+  /* Glowing card effect */
+  .card-glow {
+    @apply relative overflow-hidden;
+    box-shadow: inset 0 1px 0 0 hsl(var(--border)), 0 0 30px hsl(180 100% 50% / 0.05);
+  }
+
+  .card-glow::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, hsl(180 100% 50% / 0.1) 0%, transparent 50%);
+  }
+
+  .card-glow:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Animated gradient border */
+  .border-gradient {
+    @apply relative;
+    background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+                linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary))) border-box;
+    border: 1px solid transparent;
+  }
+
+  /* Pulsing glow animation */
+  .glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 5px hsl(180 100% 50% / 0.3), 0 0 10px hsl(180 100% 50% / 0.2);
+    }
+    50% {
+      box-shadow: 0 0 15px hsl(180 100% 50% / 0.5), 0 0 30px hsl(180 100% 50% / 0.3);
+    }
+  }
+
+  /* Neon text effect */
+  .text-glow {
+    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+  }
+
+  /* Arena grid background */
+  .arena-grid {
+    background-image: 
+      linear-gradient(hsl(180 100% 50% / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(180 100% 50% / 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  /* Scanline effect */
+  .scanlines::after {
+    content: '';
+    @apply absolute inset-0 pointer-events-none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      hsl(180 100% 50% / 0.02) 2px,
+      hsl(180 100% 50% / 0.02) 4px
+    );
+  }
+
+  /* Status indicators */
+  .status-live {
+    @apply relative;
+  }
+
+  .status-live::before {
+    content: '';
+    @apply absolute w-2 h-2 rounded-full bg-success -left-4 top-1/2 -translate-y-1/2;
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% {
+      opacity: 1;
+      transform: translateY(-50%) scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: translateY(-50%) scale(1.2);
+    }
+  }
+
+  /* Profit/Loss indicators */
+  .profit {
+    @apply text-success;
+  }
+
+  .loss {
+    @apply text-destructive;
+  }
+
+  /* Agent rank badges */
+  .rank-legendary {
+    background: linear-gradient(135deg, hsl(45 100% 55%), hsl(30 100% 45%));
+  }
+
+  .rank-epic {
+    background: linear-gradient(135deg, hsl(280 80% 60%), hsl(320 80% 50%));
+  }
+
+  .rank-rare {
+    background: linear-gradient(135deg, hsl(180 100% 50%), hsl(200 100% 45%));
+  }
+
+  /* Trading chart styles */
+  .chart-up {
+    @apply text-success;
+  }
+
+  .chart-down {
+    @apply text-destructive;
+  }
+}
+
+@layer utilities {
+  /* Custom scrollbar */
+  .scrollbar-arena {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
+  }
+
+  .scrollbar-arena::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-arena::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  .scrollbar-arena::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary));
+    border-radius: 3px;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply backdrop-blur-md bg-card/80;
+  }
+
+  /* Gradient text */
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(180 100% 50%), hsl(200 100% 55%));
+  }
+
+  .text-gradient-secondary {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(280 80% 60%), hsl(320 80% 55%));
+  }
+
+  /* Animation utilities */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
 }
