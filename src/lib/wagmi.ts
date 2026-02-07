@@ -1,8 +1,7 @@
-import { http, createConfig } from 'wagmi';
-import { mainnet } from 'wagmi/chains';
+import { http } from 'wagmi';
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 
-// Monad Testnet Chain Definition
+// Monad Testnet Chain Definition (Chain ID: 10143)
 export const monadTestnet = {
   id: 10143,
   name: 'Monad Testnet',
@@ -25,7 +24,7 @@ export const monadTestnet = {
   testnet: true,
 } as const;
 
-// Monad Mainnet (placeholder for when it launches)
+// Monad Mainnet (for future use)
 export const monadMainnet = {
   id: 10142,
   name: 'Monad',
@@ -48,17 +47,25 @@ export const monadMainnet = {
   testnet: false,
 } as const;
 
+// Nad.fun contract addresses
+export const NAD_CONTRACTS = {
+  BONDING_CURVE_ROUTER: '0x865054F0F6A288adaAc30261731361EA7E908003',
+  CURVE: '0xA7283d07812a02AFB7C09B60f8896bCEA3F90aCE',
+  LENS: '0xB056d79CA5257589692699a46623F901a3BB76f1',
+} as const;
+
 export const config = getDefaultConfig({
   appName: 'ClawTrader',
-  projectId: 'clawtrader-monad-arena', // WalletConnect project ID
+  projectId: 'clawtrader-monad-arena',
   chains: [monadTestnet],
   transports: {
     [monadTestnet.id]: http(),
   },
 });
 
-// $CLAW Token Contract (placeholder - will be deployed on nad.fun)
-export const CLAW_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
+// Agent Faucet endpoint (for testnet MON)
+export const AGENT_FAUCET_URL = 'https://agents.devnads.com/v1/faucet';
+export const VERIFY_AGENT_URL = 'https://agents.devnads.com/v1/verify';
 
 // Contract ABIs
 export const CLAW_TOKEN_ABI = [
