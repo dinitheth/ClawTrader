@@ -2,89 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ClawTrader Design System - Fierce Trading Arena */
-/* Dark theme with neon accents, competitive vibe */
+/* ClawTrader Design System - Professional Trading Platform */
+/* Clean dark theme with purple/teal accents */
 
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @layer base {
   :root {
     /* Core dark background palette */
-    --background: 220 20% 4%;
-    --foreground: 60 10% 95%;
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
 
-    /* Card with subtle glass effect */
-    --card: 220 20% 7%;
-    --card-foreground: 60 10% 95%;
+    /* Card with clean surface */
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 98%;
 
     /* Popover matching card */
-    --popover: 220 20% 7%;
-    --popover-foreground: 60 10% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Primary: Electric cyan - main action color */
-    --primary: 180 100% 50%;
-    --primary-foreground: 220 20% 4%;
+    /* Primary: Deep Purple (#6200EE) */
+    --primary: 265 89% 47%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Deep purple accent */
-    --secondary: 280 80% 60%;
-    --secondary-foreground: 60 10% 95%;
+    /* Secondary: Teal/Cyan (#03DAC6) */
+    --secondary: 174 97% 43%;
+    --secondary-foreground: 0 0% 0%;
 
     /* Muted for subtle text */
-    --muted: 220 15% 15%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 64%;
 
-    /* Accent: Neon yellow for highlights */
-    --accent: 45 100% 55%;
-    --accent-foreground: 220 20% 4%;
+    /* Accent: Primary Variant (#3700B3) */
+    --accent: 263 100% 35%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Destructive: Red for danger/losses */
-    --destructive: 0 85% 55%;
-    --destructive-foreground: 60 10% 95%;
+    /* Destructive/Error: Red (#B00020) */
+    --destructive: 349 100% 35%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Success: Green for wins/profits */
-    --success: 150 80% 45%;
-    --success-foreground: 220 20% 4%;
+    /* Success: Teal variant (#018786) */
+    --success: 180 98% 27%;
+    --success-foreground: 0 0% 100%;
 
-    /* Warning: Orange for caution */
-    --warning: 30 100% 50%;
-    --warning-foreground: 220 20% 4%;
+    /* Warning: Amber */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
 
     /* Border and input styling */
-    --border: 220 20% 15%;
-    --input: 220 20% 12%;
-    --ring: 180 100% 50%;
+    --border: 0 0% 18%;
+    --input: 0 0% 14%;
+    --ring: 265 89% 47%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Sidebar theme */
-    --sidebar-background: 220 20% 5%;
-    --sidebar-foreground: 60 10% 90%;
-    --sidebar-primary: 180 100% 50%;
-    --sidebar-primary-foreground: 220 20% 4%;
-    --sidebar-accent: 280 80% 60%;
-    --sidebar-accent-foreground: 60 10% 95%;
-    --sidebar-border: 220 20% 12%;
-    --sidebar-ring: 180 100% 50%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 265 89% 47%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 174 97% 43%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 265 89% 47%;
 
     /* Chart colors */
-    --chart-1: 180 100% 50%;
-    --chart-2: 280 80% 60%;
-    --chart-3: 45 100% 55%;
-    --chart-4: 150 80% 45%;
-    --chart-5: 0 85% 55%;
-
-    /* Custom gradient variables */
-    --gradient-primary: linear-gradient(135deg, hsl(180 100% 50%) 0%, hsl(200 100% 45%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(280 80% 60%) 0%, hsl(320 80% 50%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(150 80% 45%) 0%, hsl(180 80% 40%) 100%);
-    --gradient-danger: linear-gradient(135deg, hsl(0 85% 55%) 0%, hsl(20 90% 50%) 100%);
-    --gradient-arena: linear-gradient(180deg, hsl(220 20% 4%) 0%, hsl(220 25% 8%) 50%, hsl(220 20% 4%) 100%);
-    
-    /* Glow effects */
-    --glow-primary: 0 0 20px hsl(180 100% 50% / 0.4);
-    --glow-secondary: 0 0 20px hsl(280 80% 60% / 0.4);
-    --glow-success: 0 0 20px hsl(150 80% 45% / 0.4);
-    --glow-danger: 0 0 20px hsl(0 85% 55% / 0.4);
+    --chart-1: 265 89% 47%;
+    --chart-2: 174 97% 43%;
+    --chart-3: 263 100% 35%;
+    --chart-4: 180 98% 27%;
+    --chart-5: 349 100% 35%;
   }
 }
 
@@ -94,80 +81,38 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Orbitron', system-ui, sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  code, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
   }
 }
 
 @layer components {
-  /* Glowing card effect */
+  /* Clean card styling */
   .card-glow {
-    @apply relative overflow-hidden;
-    box-shadow: inset 0 1px 0 0 hsl(var(--border)), 0 0 30px hsl(180 100% 50% / 0.05);
+    @apply relative overflow-hidden transition-all duration-200;
+    border: 1px solid hsl(var(--border));
   }
 
-  .card-glow::before {
-    content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
-    background: linear-gradient(135deg, hsl(180 100% 50% / 0.1) 0%, transparent 50%);
+  .card-glow:hover {
+    border-color: hsl(var(--primary) / 0.3);
   }
 
-  .card-glow:hover::before {
-    @apply opacity-100;
-  }
-
-  /* Animated gradient border */
+  /* Subtle gradient border */
   .border-gradient {
     @apply relative;
     background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
                 linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary))) border-box;
     border: 1px solid transparent;
-  }
-
-  /* Pulsing glow animation */
-  .glow-pulse {
-    animation: glow-pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes glow-pulse {
-    0%, 100% {
-      box-shadow: 0 0 5px hsl(180 100% 50% / 0.3), 0 0 10px hsl(180 100% 50% / 0.2);
-    }
-    50% {
-      box-shadow: 0 0 15px hsl(180 100% 50% / 0.5), 0 0 30px hsl(180 100% 50% / 0.3);
-    }
-  }
-
-  /* Neon text effect */
-  .text-glow {
-    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
-  }
-
-  /* Arena grid background */
-  .arena-grid {
-    background-image: 
-      linear-gradient(hsl(180 100% 50% / 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(180 100% 50% / 0.03) 1px, transparent 1px);
-    background-size: 50px 50px;
-  }
-
-  /* Scanline effect */
-  .scanlines::after {
-    content: '';
-    @apply absolute inset-0 pointer-events-none;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      hsl(180 100% 50% / 0.02) 2px,
-      hsl(180 100% 50% / 0.02) 4px
-    );
   }
 
   /* Status indicators */
@@ -178,7 +123,7 @@
   .status-live::before {
     content: '';
     @apply absolute w-2 h-2 rounded-full bg-success -left-4 top-1/2 -translate-y-1/2;
-    animation: pulse-dot 1.5s ease-in-out infinite;
+    animation: pulse-dot 2s ease-in-out infinite;
   }
 
   @keyframes pulse-dot {
@@ -187,8 +132,8 @@
       transform: translateY(-50%) scale(1);
     }
     50% {
-      opacity: 0.5;
-      transform: translateY(-50%) scale(1.2);
+      opacity: 0.6;
+      transform: translateY(-50%) scale(1.1);
     }
   }
 
@@ -200,75 +145,42 @@
   .loss {
     @apply text-destructive;
   }
-
-  /* Agent rank badges */
-  .rank-legendary {
-    background: linear-gradient(135deg, hsl(45 100% 55%), hsl(30 100% 45%));
-  }
-
-  .rank-epic {
-    background: linear-gradient(135deg, hsl(280 80% 60%), hsl(320 80% 50%));
-  }
-
-  .rank-rare {
-    background: linear-gradient(135deg, hsl(180 100% 50%), hsl(200 100% 45%));
-  }
-
-  /* Trading chart styles */
-  .chart-up {
-    @apply text-success;
-  }
-
-  .chart-down {
-    @apply text-destructive;
-  }
 }
 
 @layer utilities {
   /* Custom scrollbar */
-  .scrollbar-arena {
+  .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
   }
 
-  .scrollbar-arena::-webkit-scrollbar {
+  .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
-  .scrollbar-arena::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
     border-radius: 3px;
   }
 
-  .scrollbar-arena::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary));
-    border-radius: 3px;
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 
   /* Glass effect */
   .glass {
-    @apply backdrop-blur-md bg-card/80;
+    @apply backdrop-blur-md;
+    background: hsl(var(--background) / 0.85);
   }
 
   /* Gradient text */
   .text-gradient-primary {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(180 100% 50%), hsl(200 100% 55%));
-  }
-
-  .text-gradient-secondary {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(280 80% 60%), hsl(320 80% 55%));
-  }
-
-  /* Animation utilities */
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
   }
 }

@@ -3,29 +3,31 @@ import { Button } from "@/components/ui/button";
 import { Zap, Trophy, Bot, Target, Wallet, Menu, X } from "lucide-react";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 const Header = () => {
   const { isConnected } = useAccount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const closeMobileMenu = useCallback(() => {
+    setMobileMenuOpen(false);
+  }, []);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14 md:h-16">
           {/* Logo */}
-          <NavLink to="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center glow-pulse">
-                <span className="text-xl font-display font-bold text-primary-foreground">🦞</span>
-              </div>
+          <NavLink to="/" className="flex items-center gap-2 group" onClick={closeMobileMenu}>
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-lg md:text-xl font-bold text-primary-foreground">C</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-display font-bold text-lg tracking-wider text-gradient-primary">
-                CLAWTRADER
+              <span className="font-semibold text-sm md:text-base tracking-tight">
+                ClawTrader
               </span>
-              <span className="text-[10px] text-muted-foreground -mt-1 tracking-widest">
-                AI TRADING ARENA
+              <span className="text-[9px] md:text-[10px] text-muted-foreground -mt-0.5 hidden sm:block">
+                AI Trading Arena
               </span>
             </div>
           </NavLink>
@@ -34,7 +36,7 @@ const Header = () => {
           <nav className="hidden md:flex items-center gap-1">
             <NavLink
               to="/"
-              className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               activeClassName="text-primary bg-primary/10"
             >
               <span className="flex items-center gap-2">
@@ -44,7 +46,7 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/leaderboard"
-              className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               activeClassName="text-primary bg-primary/10"
             >
               <span className="flex items-center gap-2">
@@ -54,7 +56,7 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/agents"
-              className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               activeClassName="text-primary bg-primary/10"
             >
               <span className="flex items-center gap-2">
@@ -64,7 +66,7 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/betting"
-              className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               activeClassName="text-primary bg-primary/10"
             >
               <span className="flex items-center gap-2">
@@ -74,12 +76,12 @@ const Header = () => {
             </NavLink>
           </nav>
 
-          {/* Wallet Connect */}
+          {/* Wallet Connect - Desktop */}
           <div className="hidden md:flex items-center gap-3">
             {isConnected && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border">
-                <span className="text-xs text-muted-foreground">$CLAW</span>
-                <span className="text-sm font-semibold text-primary">1,000</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 border border-border">
+                <span className="text-xs text-muted-foreground">CLAW</span>
+                <span className="text-sm font-medium text-secondary">1,000</span>
               </div>
             )}
             <ConnectButton.Custom>
@@ -110,18 +112,18 @@ const Header = () => {
                         return (
                           <Button 
                             onClick={openConnectModal}
-                            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold shadow-lg"
-                            style={{ boxShadow: 'var(--glow-primary)' }}
+                            size="sm"
+                            className="gap-2"
                           >
                             <Wallet className="w-4 h-4" />
-                            Connect Wallet
+                            Connect
                           </Button>
                         );
                       }
 
                       if (chain.unsupported) {
                         return (
-                          <Button onClick={openChainModal} variant="destructive">
+                          <Button onClick={openChainModal} variant="destructive" size="sm">
                             Wrong network
                           </Button>
                         );
@@ -133,7 +135,7 @@ const Header = () => {
                             onClick={openChainModal}
                             variant="outline"
                             size="sm"
-                            className="gap-1"
+                            className="gap-1.5 hidden lg:flex"
                           >
                             {chain.hasIcon && chain.iconUrl && (
                               <img
@@ -147,7 +149,8 @@ const Header = () => {
 
                           <Button
                             onClick={openAccountModal}
-                            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                            size="sm"
+                            className="gap-2"
                           >
                             {account.displayName}
                           </Button>
@@ -162,22 +165,23 @@ const Header = () => {
 
           {/* Mobile Menu Button */}
           <button 
-            className="md:hidden p-2"
+            className="md:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-lg">
-          <nav className="container mx-auto px-4 py-4 space-y-2">
+        <div className="md:hidden border-t border-border bg-background">
+          <nav className="container mx-auto px-4 py-3 space-y-1">
             <NavLink
               to="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              onClick={closeMobileMenu}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               activeClassName="text-primary bg-primary/10"
             >
               <Zap className="w-5 h-5" />
@@ -185,8 +189,8 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/leaderboard"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              onClick={closeMobileMenu}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               activeClassName="text-primary bg-primary/10"
             >
               <Trophy className="w-5 h-5" />
@@ -194,8 +198,8 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/agents"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              onClick={closeMobileMenu}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               activeClassName="text-primary bg-primary/10"
             >
               <Bot className="w-5 h-5" />
@@ -203,14 +207,14 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/betting"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              onClick={closeMobileMenu}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               activeClassName="text-primary bg-primary/10"
             >
               <Target className="w-5 h-5" />
               Betting
             </NavLink>
-            <div className="pt-2">
+            <div className="pt-3 border-t border-border">
               <ConnectButton />
             </div>
           </nav>
