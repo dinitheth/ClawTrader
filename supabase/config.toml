@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.generate-commentary]
 verify_jwt = false
+
+[functions.launch-agent-token]
+verify_jwt = false
