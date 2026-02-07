@@ -14,8 +14,88 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_grants: {
+        Row: {
+          access_level: string
+          agent_id: string
+          expires_at: string | null
+          features_unlocked: Json | null
+          granted_at: string
+          holder_address: string
+          id: string
+          min_tokens_required: number
+        }
+        Insert: {
+          access_level?: string
+          agent_id: string
+          expires_at?: string | null
+          features_unlocked?: Json | null
+          granted_at?: string
+          holder_address: string
+          id?: string
+          min_tokens_required?: number
+        }
+        Update: {
+          access_level?: string
+          agent_id?: string
+          expires_at?: string | null
+          features_unlocked?: Json | null
+          granted_at?: string
+          holder_address?: string
+          id?: string
+          min_tokens_required?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_grants_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_token_holders: {
+        Row: {
+          agent_id: string
+          balance: number
+          first_bought_at: string
+          holder_address: string
+          id: string
+          last_updated_at: string
+          percentage_owned: number | null
+        }
+        Insert: {
+          agent_id: string
+          balance?: number
+          first_bought_at?: string
+          holder_address: string
+          id?: string
+          last_updated_at?: string
+          percentage_owned?: number | null
+        }
+        Update: {
+          agent_id?: string
+          balance?: number
+          first_bought_at?: string
+          holder_address?: string
+          id?: string
+          last_updated_at?: string
+          percentage_owned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_token_holders_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
+          access_tier: string | null
           alliance_tendency: number | null
           avatar: string
           balance: number | null
@@ -32,6 +112,7 @@ export type Database = {
           dna_risk_tolerance: number
           dna_timing_sensitivity: number
           generation: number
+          governance_enabled: boolean | null
           id: string
           is_active: boolean | null
           is_in_match: boolean | null
@@ -42,6 +123,14 @@ export type Database = {
           owner_id: string | null
           parent_id: string | null
           personality: Database["public"]["Enums"]["agent_personality"]
+          revenue_share_enabled: boolean | null
+          revenue_share_percentage: number | null
+          token_address: string | null
+          token_holders: number | null
+          token_launched_at: string | null
+          token_market_cap: number | null
+          token_name: string | null
+          token_symbol: string | null
           total_matches: number | null
           total_pnl: number | null
           total_wagered: number | null
@@ -52,6 +141,7 @@ export type Database = {
           worst_pnl: number | null
         }
         Insert: {
+          access_tier?: string | null
           alliance_tendency?: number | null
           avatar?: string
           balance?: number | null
@@ -68,6 +158,7 @@ export type Database = {
           dna_risk_tolerance?: number
           dna_timing_sensitivity?: number
           generation?: number
+          governance_enabled?: boolean | null
           id?: string
           is_active?: boolean | null
           is_in_match?: boolean | null
@@ -78,6 +169,14 @@ export type Database = {
           owner_id?: string | null
           parent_id?: string | null
           personality?: Database["public"]["Enums"]["agent_personality"]
+          revenue_share_enabled?: boolean | null
+          revenue_share_percentage?: number | null
+          token_address?: string | null
+          token_holders?: number | null
+          token_launched_at?: string | null
+          token_market_cap?: number | null
+          token_name?: string | null
+          token_symbol?: string | null
           total_matches?: number | null
           total_pnl?: number | null
           total_wagered?: number | null
@@ -88,6 +187,7 @@ export type Database = {
           worst_pnl?: number | null
         }
         Update: {
+          access_tier?: string | null
           alliance_tendency?: number | null
           avatar?: string
           balance?: number | null
@@ -104,6 +204,7 @@ export type Database = {
           dna_risk_tolerance?: number
           dna_timing_sensitivity?: number
           generation?: number
+          governance_enabled?: boolean | null
           id?: string
           is_active?: boolean | null
           is_in_match?: boolean | null
@@ -114,6 +215,14 @@ export type Database = {
           owner_id?: string | null
           parent_id?: string | null
           personality?: Database["public"]["Enums"]["agent_personality"]
+          revenue_share_enabled?: boolean | null
+          revenue_share_percentage?: number | null
+          token_address?: string | null
+          token_holders?: number | null
+          token_launched_at?: string | null
+          token_market_cap?: number | null
+          token_name?: string | null
+          token_symbol?: string | null
           total_matches?: number | null
           total_pnl?: number | null
           total_wagered?: number | null
@@ -326,6 +435,100 @@ export type Database = {
           },
         ]
       }
+      governance_proposals: {
+        Row: {
+          agent_id: string
+          created_at: string
+          description: string
+          executed_at: string | null
+          id: string
+          proposal_type: string
+          proposed_changes: Json | null
+          proposer_address: string
+          quorum_required: number | null
+          status: string
+          title: string
+          votes_against: number | null
+          votes_for: number | null
+          voting_ends_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          description: string
+          executed_at?: string | null
+          id?: string
+          proposal_type?: string
+          proposed_changes?: Json | null
+          proposer_address: string
+          quorum_required?: number | null
+          status?: string
+          title: string
+          votes_against?: number | null
+          votes_for?: number | null
+          voting_ends_at: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          description?: string
+          executed_at?: string | null
+          id?: string
+          proposal_type?: string
+          proposed_changes?: Json | null
+          proposer_address?: string
+          quorum_required?: number | null
+          status?: string
+          title?: string
+          votes_against?: number | null
+          votes_for?: number | null
+          voting_ends_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "governance_proposals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      governance_votes: {
+        Row: {
+          id: string
+          proposal_id: string
+          vote_direction: boolean
+          vote_power: number
+          voted_at: string
+          voter_address: string
+        }
+        Insert: {
+          id?: string
+          proposal_id: string
+          vote_direction: boolean
+          vote_power: number
+          voted_at?: string
+          voter_address: string
+        }
+        Update: {
+          id?: string
+          proposal_id?: string
+          vote_direction?: boolean
+          vote_power?: number
+          voted_at?: string
+          voter_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "governance_votes_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "governance_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_scenarios: {
         Row: {
           created_at: string
@@ -485,6 +688,51 @@ export type Database = {
           wallet_address?: string | null
         }
         Relationships: []
+      }
+      revenue_distributions: {
+        Row: {
+          agent_id: string
+          distributed_amount: number
+          distributed_at: string
+          distribution_tx_hash: string | null
+          id: string
+          match_id: string | null
+          total_revenue: number
+        }
+        Insert: {
+          agent_id: string
+          distributed_amount: number
+          distributed_at?: string
+          distribution_tx_hash?: string | null
+          id?: string
+          match_id?: string | null
+          total_revenue: number
+        }
+        Update: {
+          agent_id?: string
+          distributed_amount?: number
+          distributed_at?: string
+          distribution_tx_hash?: string | null
+          id?: string
+          match_id?: string | null
+          total_revenue?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_distributions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_distributions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
