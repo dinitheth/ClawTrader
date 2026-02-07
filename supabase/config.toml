@@ -1,1 +1,10 @@
 project_id = "sopogtmlsfwyowjqcrse"
+
+[functions.agent-decision]
+verify_jwt = false
+
+[functions.simulate-match]
+verify_jwt = false
+
+[functions.generate-commentary]
+verify_jwt = false
