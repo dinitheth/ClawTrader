@@ -1,17 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { TradingViewChart, SymbolSelector, IntervalSelector } from '@/components/trading';
+import { FundAgentModal } from '@/components/trading/FundAgentModal';
+import { AgentPortfolio } from '@/components/trading/AgentPortfolio';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, AlertTriangle, CheckCircle2, Clock, Activity } from 'lucide-react';
+import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { agentService } from '@/lib/api';
 import { getAITradingAnalysis, fetchMarketData, getCoinGeckoId, type TradingDecision, type AgentDNA } from '@/lib/trading-service';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/theme/ThemeProvider';
+
+interface Trade {
+  id: string;
+  action: 'BUY' | 'SELL';
+  symbol: string;
+  amount: number;
+  price: number;
+  timestamp: string;
+  pnl?: number;
+}
 
 const Trading = () => {
   const [searchParams] = useSearchParams();
@@ -25,7 +37,11 @@ const Trading = () => {
   const [agents, setAgents] = useState<any[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAutoTrading, setIsAutoTrading] = useState(false);
   const [decision, setDecision] = useState<TradingDecision | null>(null);
+  const [showFundModal, setShowFundModal] = useState(false);
+  const [agentBalance, setAgentBalance] = useState(0);
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [analysisHistory, setAnalysisHistory] = useState<Array<{
     timestamp: string;
     symbol: string;
@@ -54,14 +70,20 @@ const Trading = () => {
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
 
-  const handleAnalyze = async () => {
+  // Update balance when agent changes
+  useEffect(() => {
+    if (selectedAgent) {
+      setAgentBalance(Number(selectedAgent.balance) || 0);
+    }
+  }, [selectedAgent]);
+
+  const handleAnalyze = useCallback(async () => {
     if (!selectedAgent) {
       toast({ title: 'Select an Agent', description: 'Choose an agent to analyze the market', variant: 'destructive' });
-      return;
+      return null;
     }
 
     setIsAnalyzing(true);
-    setDecision(null);
 
     try {
       const coinId = getCoinGeckoId(symbol);
@@ -83,7 +105,7 @@ const Trading = () => {
         agentDNA,
         marketData,
         selectedAgent.personality,
-        Number(selectedAgent.balance) || 1000
+        agentBalance
       );
 
       if (result.success && result.decision) {
@@ -94,11 +116,8 @@ const Trading = () => {
           decision: result.decision!,
           agentName: selectedAgent.name,
         }, ...prev.slice(0, 9)]);
-        
-        toast({ 
-          title: `${selectedAgent.avatar} ${selectedAgent.name} Analyzed`, 
-          description: `Decision: ${result.decision.action} with ${result.decision.confidence}% confidence` 
-        });
+
+        return { decision: result.decision, marketData };
       } else {
         throw new Error(result.error || 'Analysis failed');
       }
@@ -109,8 +128,88 @@ const Trading = () => {
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive' 
       });
+      return null;
     } finally {
       setIsAnalyzing(false);
+    }
+  }, [selectedAgent, symbol, agentBalance, toast]);
+
+  const executeVirtualTrade = useCallback((decision: TradingDecision, currentPrice: number) => {
+    if (decision.action === 'HOLD' || agentBalance <= 0) return;
+
+    const tradeAmount = (agentBalance * decision.suggestedAmount) / 100;
+    
+    // Simulate trade execution
+    const trade: Trade = {
+      id: crypto.randomUUID(),
+      action: decision.action,
+      symbol: symbol.split(':')[1],
+      amount: tradeAmount,
+      price: currentPrice,
+      timestamp: new Date().toISOString(),
+      // Simulate small random P&L for demo
+      pnl: decision.action === 'BUY' 
+        ? tradeAmount * (Math.random() * 0.1 - 0.03) 
+        : tradeAmount * (Math.random() * 0.1 - 0.03),
+    };
+
+    setTrades(prev => [trade, ...prev]);
+    
+    // Update virtual balance with P&L
+    setAgentBalance(prev => prev + (trade.pnl || 0));
+
+    toast({
+      title: `${decision.action} Executed`,
+      description: `${selectedAgent?.avatar} ${selectedAgent?.name} ${decision.action === 'BUY' ? 'bought' : 'sold'} ${tradeAmount.toFixed(4)} MON`,
+    });
+  }, [agentBalance, symbol, selectedAgent, toast]);
+
+  // Autonomous trading loop
+  useEffect(() => {
+    if (!isAutoTrading || !selectedAgent || agentBalance <= 0) return;
+
+    let intervalId: NodeJS.Timeout | undefined;
+
+    const runTradingCycle = async () => {
+      const result = await handleAnalyze();
+      if (result && result.decision && result.decision.action !== 'HOLD') {
+        executeVirtualTrade(result.decision, result.marketData.currentPrice);
+      }
+    };
+
+    // Initial analysis
+    runTradingCycle();
+
+    // Run every 30 seconds
+    intervalId = globalThis.setInterval(() => {
+      runTradingCycle();
+    }, 30000);
+
+    return () => {
+      if (intervalId) globalThis.clearInterval(intervalId);
+    };
+  }, [isAutoTrading, selectedAgent?.id, agentBalance, handleAnalyze, executeVirtualTrade]);
+
+  const handleFundAgent = (amount: number) => {
+    setAgentBalance(prev => prev + amount);
+  };
+
+  const toggleAutoTrading = () => {
+    if (!isAutoTrading && agentBalance <= 0) {
+      toast({ 
+        title: 'Fund Your Agent First', 
+        description: 'Add MON to your agent\'s balance before starting autonomous trading',
+        variant: 'destructive' 
+      });
+      setShowFundModal(true);
+      return;
+    }
+    setIsAutoTrading(!isAutoTrading);
+    if (!isAutoTrading) {
+      toast({ 
+        title: 'Autonomous Trading Started', 
+        description: `${selectedAgent?.avatar} ${selectedAgent?.name} will now analyze and trade automatically` 
+      });
     }
   };
 
@@ -138,10 +237,10 @@ const Trading = () => {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Activity className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl md:text-4xl font-display font-bold">TRADING</h1>
+              <h1 className="text-3xl md:text-4xl font-display font-bold">AUTONOMOUS TRADING</h1>
             </div>
             <p className="text-muted-foreground">
-              Real-time charts with AI-powered analysis from your agents
+              Fund your agent with testnet MON and let AI trade autonomously
             </p>
           </div>
 
@@ -174,7 +273,7 @@ const Trading = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Bot className="w-4 h-4" />
-                  Select Agent
+                  Select Trading Agent
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -241,25 +340,76 @@ const Trading = () => {
                   </div>
                 )}
 
-                <Button
-                  onClick={handleAnalyze}
-                  disabled={!selectedAgent || isAnalyzing}
-                  className="w-full mt-4 gap-2 bg-gradient-to-r from-primary to-secondary"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="w-4 h-4" />
-                      Analyze Market
-                    </>
-                  )}
-                </Button>
+                {/* Action Buttons */}
+                <div className="mt-4 space-y-2">
+                  <Button
+                    onClick={() => setShowFundModal(true)}
+                    disabled={!selectedAgent}
+                    variant="outline"
+                    className="w-full gap-2"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    Fund Agent ({agentBalance.toFixed(2)} MON)
+                  </Button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={() => handleAnalyze()}
+                      disabled={!selectedAgent || isAnalyzing || isAutoTrading}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      {isAnalyzing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Brain className="w-4 h-4" />
+                      )}
+                      Analyze
+                    </Button>
+
+                    <Button
+                      onClick={toggleAutoTrading}
+                      disabled={!selectedAgent}
+                      className={`gap-2 ${isAutoTrading ? 'bg-destructive hover:bg-destructive/90' : 'bg-gradient-to-r from-primary to-secondary'}`}
+                    >
+                      {isAutoTrading ? (
+                        <>
+                          <Square className="w-4 h-4" />
+                          Stop
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4" />
+                          Auto Trade
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Auto Trading Status */}
+                {isAutoTrading && (
+                  <div className="mt-3 p-2 rounded-lg bg-accent/10 border border-accent/30 text-center">
+                    <div className="flex items-center justify-center gap-2 text-accent text-sm">
+                      <Activity className="w-4 h-4 animate-pulse" />
+                      <span>Autonomous trading active</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Analyzing every 30 seconds
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {/* Agent Portfolio */}
+            {selectedAgent && (
+              <AgentPortfolio
+                agent={{ ...selectedAgent, balance: agentBalance }}
+                trades={trades}
+                isTrading={isAutoTrading}
+              />
+            )}
 
             {/* AI Decision */}
             {decision && (
@@ -267,7 +417,7 @@ const Trading = () => {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Zap className="w-4 h-4 text-primary" />
-                    AI Decision
+                    Latest AI Decision
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -285,17 +435,7 @@ const Trading = () => {
                   <div className="space-y-3 text-sm">
                     <div>
                       <p className="text-muted-foreground mb-1">Reasoning</p>
-                      <p>{decision.reasoning}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-muted-foreground mb-1">Technical Analysis</p>
-                      <p className="text-xs">{decision.technicalAnalysis}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-muted-foreground mb-1">Risk Assessment</p>
-                      <p className="text-xs">{decision.riskAssessment}</p>
+                      <p className="text-xs">{decision.reasoning}</p>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 pt-2">
@@ -306,49 +446,41 @@ const Trading = () => {
                       {decision.stopLoss && (
                         <div className="text-center p-2 rounded bg-destructive/10">
                           <p className="text-xs text-destructive">Stop Loss</p>
-                          <p className="font-mono">${decision.stopLoss.toLocaleString()}</p>
+                          <p className="font-mono text-xs">${decision.stopLoss.toLocaleString()}</p>
                         </div>
                       )}
                       {decision.takeProfit && (
                         <div className="text-center p-2 rounded bg-accent/10">
                           <p className="text-xs text-accent">Take Profit</p>
-                          <p className="font-mono">${decision.takeProfit.toLocaleString()}</p>
+                          <p className="font-mono text-xs">${decision.takeProfit.toLocaleString()}</p>
                         </div>
                       )}
                     </div>
                   </div>
-
-                  {decision.action !== 'HOLD' && (
-                    <Button className="w-full gap-2" variant={decision.action === 'BUY' ? 'default' : 'destructive'}>
-                      <Zap className="w-4 h-4" />
-                      Execute {decision.action} on Monad DEX
-                    </Button>
-                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Analysis History */}
-            {analysisHistory.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Recent Analysis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                    {analysisHistory.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/20 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={`text-xs ${getActionColor(item.decision.action)}`}>
-                            {item.decision.action}
-                          </Badge>
-                          <span className="text-muted-foreground">{item.symbol}</span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(item.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
-                    ))}
+            {/* No Balance Warning */}
+            {selectedAgent && agentBalance <= 0 && !decision && (
+              <Card className="border-warning/30 bg-warning/5">
+                <CardContent className="py-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-warning">Fund Your Agent</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Add testnet MON to your agent's balance to enable autonomous trading. The agent will analyze real market data and make virtual trades.
+                      </p>
+                      <Button 
+                        onClick={() => setShowFundModal(true)} 
+                        size="sm" 
+                        className="mt-3 gap-2"
+                      >
+                        <Wallet className="w-4 h-4" />
+                        Fund Agent Now
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -356,6 +488,14 @@ const Trading = () => {
           </div>
         </div>
       </div>
+
+      {/* Fund Agent Modal */}
+      <FundAgentModal
+        open={showFundModal}
+        onOpenChange={setShowFundModal}
+        agent={selectedAgent ? { ...selectedAgent, balance: agentBalance } : null}
+        onFunded={handleFundAgent}
+      />
     </Layout>
   );
 };
