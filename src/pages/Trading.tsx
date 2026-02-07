@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { TradingViewChart, SymbolSelector, IntervalSelector } from '@/components/trading';
@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle, ExternalLink } from 'lucide-react';
+import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { agentService } from '@/lib/api';
-import { getAITradingAnalysis, fetchMarketData, getCoinGeckoId, type TradingDecision, type AgentDNA } from '@/lib/trading-service';
+import { getAITradingAnalysis, fetchMarketData, getCoinGeckoId, type TradingDecision, type AgentDNA, SYMBOL_TO_COINGECKO } from '@/lib/trading-service';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/theme/ThemeProvider';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Trade {
   id: string;
@@ -34,7 +35,7 @@ const Trading = () => {
   const { theme } = useTheme();
 
   const [symbol, setSymbol] = useState('BINANCE:BTCUSDT');
-  const [interval, setInterval] = useState('15');
+  const [chartInterval, setChartInterval] = useState('15');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(searchParams.get('agent'));
   const [agents, setAgents] = useState<any[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
@@ -137,61 +138,99 @@ const Trading = () => {
     }
   }, [selectedAgent, symbol, agentBalance, toast]);
 
-  const executeVirtualTrade = useCallback((decision: TradingDecision, currentPrice: number) => {
-    if (decision.action === 'HOLD' || agentBalance <= 0) return;
+  // Track last trade time for cooldown
+  const lastTradeTime = useRef<number>(0);
+  const TRADE_COOLDOWN = 30000; // 30 seconds
 
-    const tradeAmount = (agentBalance * decision.suggestedAmount) / 100;
-    
-    // Simulate trade execution
-    const trade: Trade = {
-      id: crypto.randomUUID(),
-      action: decision.action,
-      symbol: symbol.split(':')[1],
-      amount: tradeAmount,
-      price: currentPrice,
-      timestamp: new Date().toISOString(),
-      // Simulate small random P&L for demo
-      pnl: decision.action === 'BUY' 
-        ? tradeAmount * (Math.random() * 0.1 - 0.03) 
-        : tradeAmount * (Math.random() * 0.1 - 0.03),
-    };
-
-    setTrades(prev => [trade, ...prev]);
-    
-    // Update virtual balance with P&L
-    setAgentBalance(prev => prev + (trade.pnl || 0));
-
-    toast({
-      title: `${decision.action} Executed`,
-      description: `${selectedAgent?.avatar} ${selectedAgent?.name} ${decision.action === 'BUY' ? 'bought' : 'sold'} ${tradeAmount.toFixed(4)} MON`,
-    });
-  }, [agentBalance, symbol, selectedAgent, toast]);
-
-  // Autonomous trading loop
+  // Autonomous trading loop using backend edge function
   useEffect(() => {
     if (!isAutoTrading || !selectedAgent || agentBalance <= 0) return;
 
-    let intervalId: NodeJS.Timeout | undefined;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
 
-    const runTradingCycle = async () => {
-      const result = await handleAnalyze();
-      if (result && result.decision && result.decision.action !== 'HOLD') {
-        executeVirtualTrade(result.decision, result.marketData.currentPrice);
+    const runAutonomousTrade = async () => {
+      // Check cooldown
+      const now = Date.now();
+      if (now - lastTradeTime.current < TRADE_COOLDOWN) return;
+      lastTradeTime.current = now;
+
+      try {
+        setIsAnalyzing(true);
+        
+        // Get CoinGecko ID for the symbol
+        const coinId = getCoinGeckoId(symbol);
+        
+        // Call the edge function
+        const { data, error } = await supabase.functions.invoke('execute-agent-trade', {
+          body: {
+            agentId: selectedAgent.id,
+            symbol: coinId,
+          },
+        });
+
+        if (error) {
+          console.error('Autonomous trade error:', error);
+          toast({ 
+            title: 'Trade Error', 
+            description: error.message,
+            variant: 'destructive' 
+          });
+          return;
+        }
+
+        if (data.success) {
+          const { decision: tradeDecision, trade } = data;
+          setDecision(tradeDecision);
+          
+          if (trade.executed) {
+            // Update local balance
+            setAgentBalance(trade.newBalance);
+            
+            // Add to trades list
+            const newTrade: Trade = {
+              id: crypto.randomUUID(),
+              action: tradeDecision.action,
+              symbol: trade.symbol,
+              amount: trade.previousBalance * (tradeDecision.suggestedAmount / 100),
+              price: trade.marketPrice,
+              timestamp: new Date().toISOString(),
+              pnl: trade.pnl,
+            };
+            setTrades(prev => [newTrade, ...prev]);
+
+            // Show notification
+            const pnlText = trade.pnl >= 0 ? `+${trade.pnl.toFixed(4)}` : trade.pnl.toFixed(4);
+            toast({
+              title: `${tradeDecision.action} Executed!`,
+              description: `${selectedAgent.avatar} ${selectedAgent.name}: ${pnlText} MON (${tradeDecision.confidence}% confidence)`,
+            });
+          }
+
+          // Add to analysis history
+          setAnalysisHistory(prev => [{
+            timestamp: new Date().toISOString(),
+            symbol: trade.symbol,
+            decision: tradeDecision,
+            agentName: selectedAgent.name,
+          }, ...prev.slice(0, 9)]);
+        }
+      } catch (err) {
+        console.error('Autonomous trade exception:', err);
+      } finally {
+        setIsAnalyzing(false);
       }
     };
 
-    // Initial analysis
-    runTradingCycle();
+    // Initial trade
+    runAutonomousTrade();
 
     // Run every 30 seconds
-    intervalId = globalThis.setInterval(() => {
-      runTradingCycle();
-    }, 30000);
+    intervalId = setInterval(runAutonomousTrade, TRADE_COOLDOWN);
 
     return () => {
-      if (intervalId) globalThis.clearInterval(intervalId);
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [isAutoTrading, selectedAgent?.id, agentBalance, handleAnalyze, executeVirtualTrade]);
+  }, [isAutoTrading, selectedAgent?.id, agentBalance, symbol, toast]);
 
   const handleFundAgent = (amount: number) => {
     setAgentBalance(prev => prev + amount);
@@ -270,7 +309,7 @@ const Trading = () => {
 
           <div className="flex items-center gap-3 flex-wrap">
             <SymbolSelector value={symbol} onValueChange={setSymbol} />
-            <IntervalSelector value={interval} onValueChange={setInterval} />
+            <IntervalSelector value={chartInterval} onValueChange={setChartInterval} />
           </div>
         </div>
 
@@ -281,7 +320,7 @@ const Trading = () => {
               <div className="h-[500px]">
                 <TradingViewChart
                   symbol={symbol}
-                  interval={interval}
+                  interval={chartInterval}
                   theme={theme === 'dark' ? 'dark' : 'light'}
                   height={500}
                   autosize={false}
