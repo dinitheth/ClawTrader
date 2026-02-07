@@ -8,6 +8,7 @@ import { Bot, Plus, TrendingUp, TrendingDown, Dna, Zap, Settings, Loader2, Rocke
 import CreateAgentModal from "@/components/agents/CreateAgentModal";
 import { LaunchTokenModal } from "@/components/agents/LaunchTokenModal";
 import { TokenDashboard } from "@/components/agents/TokenDashboard";
+import { EvolveAgentModal } from "@/components/agents/EvolveAgentModal";
 import { agentService, profileService } from "@/lib/api";
 import { useAccount } from 'wagmi';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +19,7 @@ const Agents = () => {
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [launchTokenAgent, setLaunchTokenAgent] = useState<any>(null);
+  const [evolveAgent, setEvolveAgent] = useState<any>(null);
   const [expandedTokenAgent, setExpandedTokenAgent] = useState<string | null>(null);
   const [agents, setAgents] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
@@ -278,7 +280,12 @@ const Agents = () => {
                             {expandedTokenAgent === agent.id ? 'Hide' : 'View'} Token
                           </Button>
                         )}
-                        <Button variant="outline" size="sm" className="gap-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-1"
+                          onClick={() => setEvolveAgent(agent)}
+                        >
                           <Dna className="w-4 h-4" />
                           Evolve
                         </Button>
@@ -337,6 +344,15 @@ const Agents = () => {
           open={!!launchTokenAgent}
           onOpenChange={(open) => !open && setLaunchTokenAgent(null)}
           agent={launchTokenAgent}
+          onSuccess={loadAgents}
+        />
+      )}
+
+      {evolveAgent && (
+        <EvolveAgentModal
+          open={!!evolveAgent}
+          onOpenChange={(open) => !open && setEvolveAgent(null)}
+          agent={evolveAgent}
           onSuccess={loadAgents}
         />
       )}

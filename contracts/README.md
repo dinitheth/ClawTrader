@@ -2,41 +2,114 @@
 
 Smart contracts for the ClawTrader Arena on Monad Testnet.
 
-## Contracts
+## Contract Overview
 
-### ClawToken (CLAW)
-- ERC-20 platform token
-- Testnet faucet: 1000 CLAW per hour
-- Max supply: 1 billion tokens
+| Contract | Purpose | File |
+|----------|---------|------|
+| TestUSDC | Mintable USDC with faucet | `TestUSDC.sol` |
+| AgentVault | User deposits for AI agents | `AgentVault.sol` |
+| VaultB | Profit distribution pool | `VaultB.sol` |
+| AgentFactory | On-chain agent registration | `AgentFactory.sol` |
+| ClawToken | Platform utility token | `ClawToken.sol` |
+| ClawArena | Match escrow and betting | `ClawArena.sol` |
 
-### ClawArena
-- Match creation and betting escrow
-- On-chain odds calculation
-- Automatic winner payouts
-- 2.5% platform fee
+## Deployment Order
 
-## Deployment
+Deploy in this exact sequence:
 
-1. Install dependencies:
-```bash
-cd contracts
-npm install
+1. **TestUSDC** - No dependencies
+2. **AgentVault** - Needs TestUSDC address
+3. **VaultB** - Needs TestUSDC and AgentVault addresses
+4. **AgentFactory** - No dependencies
+5. **ClawToken** - Optional, for betting
+6. **ClawArena** - Optional, needs ClawToken
+
+## Deployment Guide (Remix IDE)
+
+### Prerequisites
+- MetaMask connected to Monad Testnet (Chain ID: 10143)
+- MON tokens for gas
+- Remix IDE: https://remix.ethereum.org
+
+### Step 1: Deploy TestUSDC
+
+```solidity
+// No constructor arguments
+// 10 billion USDC minted to deployer
 ```
 
-2. Set your private key:
-```bash
-export PRIVATE_KEY="your-private-key-here"
+1. Create `TestUSDC.sol` in Remix
+2. Compile with Solidity 0.8.20
+3. Deploy with no arguments
+4. Save deployed address
+
+### Step 2: Deploy AgentVault
+
+```solidity
+// Constructor: _usdc = TestUSDC address
 ```
 
-3. Get testnet MON:
-   - Use the Monad faucet or Agent Faucet at https://agents.devnads.com/v1/faucet
+1. Create `AgentVault.sol`
+2. Deploy with TestUSDC address
+3. Save deployed address
 
-4. Deploy:
-```bash
-npm run deploy
+### Step 3: Deploy VaultB
+
+```solidity
+// Constructor: _usdc = TestUSDC, _agentVault = AgentVault address
 ```
 
-5. Save the contract addresses and update `src/lib/wagmi.ts`
+1. Create `VaultB.sol`
+2. Deploy with both addresses
+3. Save deployed address
+
+### Step 4: Deploy AgentFactory
+
+```solidity
+// No constructor arguments
+```
+
+### Step 5: Configure Contracts
+
+After deployment, call these functions:
+
+```javascript
+// On AgentVault:
+setVaultB(VaultB_address)
+setOperator(backend_wallet_address)
+
+// Transfer USDC to VaultB for profit pool:
+// On TestUSDC:
+transfer(VaultB_address, 1000000000000000) // 1B USDC
+```
+
+### Step 6: Update Frontend
+
+Update `src/lib/contracts.ts` with deployed addresses.
+
+## Contract Features
+
+### TestUSDC
+- ERC20 with 6 decimals
+- 10 billion initial supply
+- Public faucet: 1000 USDC/hour/address
+- Role-based minting
+
+### AgentVault
+- Per-user per-agent balance tracking
+- Operator can simulate trades
+- Profits from VaultB
+- 1% platform fee on profits
+
+### VaultB
+- USDC reserves for profit distribution
+- Only AgentVault can request distributions
+- Emergency withdraw for owner
+
+### AgentFactory
+- Permanent on-chain agent records
+- Stores DNA immutably
+- Links to Supabase UUIDs
 
 ## Network Config
 
@@ -50,15 +123,16 @@ npm run deploy
 ## Architecture
 
 ```
-User places bet
+User deposits USDC
     ↓
-ClawArena.placeBet() 
+AgentVault.deposit(agentId, amount)
     ↓
-CLAW tokens escrowed
+Agent trades autonomously (off-chain AI)
     ↓
-Match simulated (off-chain edge function)
+Backend calls AgentVault.simulateTrade()
     ↓
-Oracle calls ClawArena.settleMatch(winnerId)
+Profit? → VaultB.distributeProfitTo() → User balance increases
+Loss? → User balance decreases
     ↓
-Winners claim payouts via claimWinnings()
+User withdraws via AgentVault.withdraw()
 ```
