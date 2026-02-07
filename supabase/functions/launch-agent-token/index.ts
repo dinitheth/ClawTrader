@@ -7,10 +7,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Nad.fun API endpoints
+const NAD_API = {
+  TESTNET: 'https://dev-api.nad.fun',
+  MAINNET: 'https://api.nadapp.net',
+};
+
 // Nad.fun contract addresses on Monad Testnet
 const NAD_CONTRACTS = {
-  DEX_ROUTER: '0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2',
   BONDING_CURVE_ROUTER: '0x865054F0F6A288adaAc30261731361EA7E908003',
+  CURVE: '0xA7283d07812a02AFB7C09B60f8896bCEA3F90aCE',
   LENS: '0xB056d79CA5257589692699a46623F901a3BB76f1',
 };
 
@@ -43,6 +49,7 @@ serve(async (req) => {
       token_name, 
       token_symbol, 
       description,
+      image_url,
       revenue_share_percentage,
       governance_enabled,
       access_tier,
@@ -62,26 +69,102 @@ serve(async (req) => {
       throw new Error('Agent not found');
     }
 
-    // Generate token metadata based on agent personality
-    const tokenMetadata = generateTokenMetadata(agent, description);
+    // Step 1: Upload image to nad.fun (if provided)
+    let imageUri = '';
+    if (image_url) {
+      console.log('📸 Uploading image to nad.fun...');
+      const imageResponse = await fetch(`${NAD_API.TESTNET}/agent/token/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url }),
+      });
+      
+      if (imageResponse.ok) {
+        const imageData = await imageResponse.json();
+        imageUri = imageData.image_uri || '';
+        console.log('✅ Image uploaded:', imageUri);
+      } else {
+        console.log('⚠️ Image upload failed, using default');
+      }
+    }
 
-    // For hackathon demo: simulate token creation on nad.fun
-    // In production, this would call the actual nad.fun SDK
-    const simulatedTokenAddress = `0x${generateMockAddress()}`;
+    // Step 2: Generate token metadata
+    const tokenMetadata = generateTokenMetadata(agent, description, imageUri);
+    console.log('📝 Uploading metadata to nad.fun...');
     
-    // Calculate initial bonding curve parameters based on agent stats
+    let metadataUri = '';
+    try {
+      const metadataResponse = await fetch(`${NAD_API.TESTNET}/agent/token/metadata`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: token_name,
+          symbol: token_symbol,
+          description: tokenMetadata.description,
+          image: imageUri,
+          attributes: [
+            { trait_type: 'Personality', value: agent.personality },
+            { trait_type: 'Generation', value: agent.generation },
+            { trait_type: 'DNA Risk', value: agent.dna_risk_tolerance },
+            { trait_type: 'DNA Aggression', value: agent.dna_aggression },
+            { trait_type: 'Wins', value: agent.wins || 0 },
+            { trait_type: 'Losses', value: agent.losses || 0 },
+          ],
+        }),
+      });
+      
+      if (metadataResponse.ok) {
+        const metaData = await metadataResponse.json();
+        metadataUri = metaData.metadata_uri || '';
+        console.log('✅ Metadata uploaded:', metadataUri);
+      }
+    } catch (e) {
+      console.log('⚠️ Metadata upload failed:', e);
+    }
+
+    // Step 3: Mine salt for vanity address (7777 prefix)
+    console.log('⛏️ Mining salt for vanity address...');
+    let salt = '';
+    let predictedAddress = '';
+    
+    try {
+      const saltResponse = await fetch(`${NAD_API.TESTNET}/agent/salt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          creator: creator_wallet,
+          name: token_name,
+          symbol: token_symbol,
+        }),
+      });
+      
+      if (saltResponse.ok) {
+        const saltData = await saltResponse.json();
+        salt = saltData.salt || '';
+        predictedAddress = saltData.address || '';
+        console.log('✅ Salt mined:', salt, 'Address:', predictedAddress);
+      }
+    } catch (e) {
+      console.log('⚠️ Salt mining failed, using random:', e);
+    }
+
+    // For hackathon demo: if API calls fail, generate simulated address
+    // In production, this would require the actual on-chain transaction
+    const tokenAddress = predictedAddress || `0x7777${generateMockAddress().slice(4)}`;
+    
+    // Calculate initial market cap based on agent stats
     const initialMarketCap = calculateInitialMarketCap(agent);
 
     // Update agent with token info
     const { error: updateError } = await supabase
       .from('agents')
       .update({
-        token_address: simulatedTokenAddress,
+        token_address: tokenAddress,
         token_symbol: token_symbol.toUpperCase(),
         token_name: token_name,
         token_launched_at: new Date().toISOString(),
         token_market_cap: initialMarketCap,
-        token_holders: 1, // Creator is first holder
+        token_holders: 1,
         revenue_share_enabled: revenue_share_percentage > 0,
         revenue_share_percentage: revenue_share_percentage,
         governance_enabled: governance_enabled,
@@ -99,7 +182,7 @@ serve(async (req) => {
       .insert({
         agent_id: agent_id,
         holder_address: creator_wallet,
-        balance: 1000000, // 1M tokens for creator (10%)
+        balance: 1000000,
         percentage_owned: 10,
       });
 
@@ -117,19 +200,20 @@ serve(async (req) => {
         });
     }
 
-    console.log(`✅ Token ${token_symbol} launched at ${simulatedTokenAddress}`);
+    console.log(`✅ Token ${token_symbol} launched at ${tokenAddress}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         token: {
-          address: simulatedTokenAddress,
+          address: tokenAddress,
           name: token_name,
           symbol: token_symbol,
           market_cap: initialMarketCap,
-          metadata: tokenMetadata,
+          metadata_uri: metadataUri,
           bonding_curve: {
             router: NAD_CONTRACTS.BONDING_CURVE_ROUTER,
+            curve: NAD_CONTRACTS.CURVE,
             initial_price: 0.0001,
             curve_type: 'exponential',
           },
@@ -137,6 +221,10 @@ serve(async (req) => {
             governance: governance_enabled,
             revenue_share: revenue_share_percentage > 0 ? `${revenue_share_percentage}%` : 'disabled',
             access_tier: access_tier,
+          },
+          nad_fun_links: {
+            trade: `https://testnet.nad.fun/token/${tokenAddress}`,
+            api: NAD_API.TESTNET,
           },
         },
       }),

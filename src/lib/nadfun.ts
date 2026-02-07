@@ -1,9 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Nad.fun API endpoints
+export const NAD_API = {
+  TESTNET: 'https://dev-api.nad.fun',
+  MAINNET: 'https://api.nadapp.net',
+} as const;
+
 // Nad.fun contract addresses on Monad Testnet
 export const NAD_CONTRACTS = {
-  DEX_ROUTER: '0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2',
   BONDING_CURVE_ROUTER: '0x865054F0F6A288adaAc30261731361EA7E908003',
+  CURVE: '0xA7283d07812a02AFB7C09B60f8896bCEA3F90aCE',
   LENS: '0xB056d79CA5257589692699a46623F901a3BB76f1',
 } as const;
 
@@ -26,6 +32,8 @@ export interface TokenInfo {
   marketCap: number;
   holders: number;
   price: number;
+  metadataUri?: string;
+  nadFunLink?: string;
   utilities: {
     governance: boolean;
     revenueShare: string;
