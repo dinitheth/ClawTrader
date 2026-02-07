@@ -1,13 +1,10 @@
 import { NavLink } from "@/components/NavLink";
-import { Button } from "@/components/ui/button";
-import { Zap, Trophy, Bot, Target, Wallet, Menu, X } from "lucide-react";
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
+import { Zap, Trophy, Bot, Target, Menu, X } from "lucide-react";
 import { useState, useCallback } from 'react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { ConnectButton } from '@/components/wallet/ConnectButton';
 
 const Header = () => {
-  const { isConnected } = useAccount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const closeMobileMenu = useCallback(() => {
@@ -79,92 +76,8 @@ const Header = () => {
 
           {/* Right side - Desktop */}
           <div className="hidden md:flex items-center gap-2">
-            {isConnected && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border">
-                <span className="text-xs text-muted-foreground">CLAW</span>
-                <span className="text-sm font-medium">1,000</span>
-              </div>
-            )}
-            
             <ThemeToggle />
-            
-            <ConnectButton.Custom>
-              {({
-                account,
-                chain,
-                openAccountModal,
-                openChainModal,
-                openConnectModal,
-                mounted,
-              }) => {
-                const ready = mounted;
-                const connected = ready && account && chain;
-
-                return (
-                  <div
-                    {...(!ready && {
-                      'aria-hidden': true,
-                      'style': {
-                        opacity: 0,
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                      },
-                    })}
-                  >
-                    {(() => {
-                      if (!connected) {
-                        return (
-                          <Button 
-                            onClick={openConnectModal}
-                            size="sm"
-                            className="gap-2 rounded-full px-4"
-                          >
-                            <Wallet className="w-4 h-4" />
-                            Connect
-                          </Button>
-                        );
-                      }
-
-                      if (chain.unsupported) {
-                        return (
-                          <Button onClick={openChainModal} variant="destructive" size="sm" className="rounded-full">
-                            Wrong network
-                          </Button>
-                        );
-                      }
-
-                      return (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            onClick={openChainModal}
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5 hidden lg:flex rounded-full"
-                          >
-                            {chain.hasIcon && chain.iconUrl && (
-                              <img
-                                alt={chain.name ?? 'Chain icon'}
-                                src={chain.iconUrl}
-                                className="w-4 h-4"
-                              />
-                            )}
-                            {chain.name}
-                          </Button>
-
-                          <Button
-                            onClick={openAccountModal}
-                            size="sm"
-                            className="gap-2 rounded-full"
-                          >
-                            {account.displayName}
-                          </Button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                );
-              }}
-            </ConnectButton.Custom>
+            <ConnectButton />
           </div>
 
           {/* Mobile: Theme toggle + Menu */}
