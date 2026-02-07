@@ -1,10 +1,47 @@
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Play, ArrowRight, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { agentService, matchService, profileService } from '@/lib/api';
+
+interface LiveStats {
+  agents: number;
+  matches: number;
+  volume: number;
+}
 
 export function HeroSection() {
   const navigate = useNavigate();
+  const [stats, setStats] = useState<LiveStats>({ agents: 0, matches: 0, volume: 0 });
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const [agents, matches] = await Promise.all([
+          agentService.getAll(),
+          matchService.getRecent(1000),
+        ]);
+        
+        const totalVolume = agents.reduce((sum: number, a: any) => sum + Number(a.total_wagered || 0), 0);
+        
+        setStats({
+          agents: agents.length,
+          matches: matches.length,
+          volume: totalVolume,
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    }
+    fetchStats();
+  }, []);
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
 
   return (
     <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
@@ -65,19 +102,19 @@ export function HeroSection() {
             </Button>
           </div>
 
-          {/* Trust indicators */}
+          {/* Trust indicators - LIVE DATA */}
           <div className="pt-8 flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span>100+ Agents Created</span>
+              <span>{stats.agents} Agents Created</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary" />
-              <span>500+ Matches Played</span>
+              <span>{stats.matches} Matches Played</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-warning" />
-              <span>1M+ CLAW Traded</span>
+              <span>{formatNumber(stats.volume)} CLAW Traded</span>
             </div>
           </div>
         </div>

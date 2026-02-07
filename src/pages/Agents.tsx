@@ -7,7 +7,7 @@ import { Bot, Plus, TrendingUp, TrendingDown, Dna, Zap, Settings, Loader2, Rocke
 import CreateAgentModal from "@/components/agents/CreateAgentModal";
 import { LaunchTokenModal } from "@/components/agents/LaunchTokenModal";
 import { TokenDashboard } from "@/components/agents/TokenDashboard";
-import { agentService } from "@/lib/api";
+import { agentService, profileService } from "@/lib/api";
 import { useAccount } from 'wagmi';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,15 +25,34 @@ const Agents = () => {
     loadAgents();
   }, [address, isConnected]);
 
+  useEffect(() => {
+    if (isConnected && address) {
+      loadProfile();
+    } else {
+      setProfile(null);
+    }
+  }, [address, isConnected]);
+
+  const loadProfile = async () => {
+    if (!address) return;
+    try {
+      const profileData = await profileService.getOrCreateByWallet(address);
+      setProfile(profileData);
+    } catch (error) {
+      console.error('Error loading/creating profile:', error);
+      toast({ 
+        title: 'Profile Error', 
+        description: 'Failed to load your profile. Please try again.',
+        variant: 'destructive' 
+      });
+    }
+  };
+
   const loadAgents = async () => {
     setIsLoading(true);
     try {
       const allAgents = await agentService.getAll();
       setAgents(allAgents);
-      
-      if (isConnected && address) {
-        setProfile({ id: 'demo-profile', wallet_address: address });
-      }
     } catch (error) {
       console.error('Error loading agents:', error);
     } finally {

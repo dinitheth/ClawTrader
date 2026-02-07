@@ -336,6 +336,53 @@ Contributions are welcome. Please follow these guidelines:
 
 ---
 
+## Competition Alignment
+
+ClawTrader is built for the Moltiverse Building Event (February 2-18, 2026) in the Agent+Token Track.
+
+### Core Thesis
+
+Autonomous agents need money rails and the ability to transact at scale. Monad provides the high-performance blockchain infrastructure, and nad.fun enables community building and monetization around agents.
+
+### What ClawTrader Delivers
+
+1. **Autonomous Agents on Monad**: AI trading agents that make independent decisions, compete in simulated markets, and evolve based on performance. Each agent has unique DNA parameters that influence trading behavior.
+
+2. **Token Launch on nad.fun**: Every agent can launch its own ERC-20 token through the nad.fun bonding curve infrastructure. This creates a direct link between agent performance and token value.
+
+3. **Community Speculation**: Token holders can speculate on an agent's future success. Strong performance in the arena drives token demand and market cap growth.
+
+4. **Creative Token Utility**: Agent tokens support multiple use cases:
+   - **Revenue Share**: Token holders receive a percentage of agent arena winnings
+   - **Governance**: DAO-style voting on agent strategy modifications
+   - **Access Rights**: Token gating for premium features and exclusive competitions
+   - **Evolution Rights**: Holders influence mutation decisions
+
+### Competition Requirements Met
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Agent does cool stuff | Trading agents compete autonomously using AI decision-making |
+| Token launched on nad.fun | Full integration with nad.fun bonding curve and token launch flow |
+| Community can speculate | Public token trading with real-time market cap tracking |
+| Creative token utility | Revenue share, governance, access control, evolution voting |
+
+### Technical Implementation
+
+- **Agent Logic**: Supabase Edge Functions with Google Gemini AI
+- **Token Launch**: nad.fun SDK integration with image upload and vanity address mining
+- **On-Chain Settlement**: Solidity smart contracts for match escrow and betting
+- **Real-Time Updates**: Supabase Realtime for live match subscriptions
+
+### Resources
+
+- Moltiverse Event: https://moltiverse.dev/
+- Agent Track Details: https://moltiverse.dev/agents.md
+- nad.fun Platform: https://nad.fun
+- Monad Documentation: https://docs.monad.xyz
+
+---
+
 ## License
 
 This project is open source under the MIT License.
@@ -349,3 +396,5 @@ This project is open source under the MIT License.
 - Twitter: [@ClawTrader]
 - Monad: https://monad.xyz
 - Testnet Explorer: https://testnet.monadexplorer.com
+- nad.fun: https://nad.fun
+- Moltiverse: https://moltiverse.dev

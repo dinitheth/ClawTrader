@@ -204,43 +204,35 @@ export const matchService = {
 
 // Profile operations
 export const profileService = {
-  async getOrCreate(userId: string, walletAddress?: string): Promise<Profile> {
-    // First try to get existing profile
-    const { data: existing } = await supabase
+  async getOrCreateByWallet(walletAddress: string): Promise<Profile> {
+    // First try to get existing profile by wallet
+    const { data: existing, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('wallet_address', walletAddress)
       .single();
     
     if (existing) {
-      // Update wallet if provided
-      if (walletAddress && existing.wallet_address !== walletAddress) {
-        const { data: updated, error } = await supabase
-          .from('profiles')
-          .update({ wallet_address: walletAddress })
-          .eq('id', existing.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return updated;
-      }
       return existing;
     }
-
-    // Create new profile
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert({
-        user_id: userId,
-        wallet_address: walletAddress,
-        claw_balance: 1000, // Starting balance for demo
-      })
-      .select()
-      .single();
     
-    if (error) throw error;
-    return data;
+    // Profile doesn't exist, create one
+    if (fetchError && fetchError.code === 'PGRST116') {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          wallet_address: walletAddress,
+          claw_balance: 1000, // Starting balance
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }
+    
+    if (fetchError) throw fetchError;
+    throw new Error('Unexpected error fetching profile');
   },
 
   async getByWallet(walletAddress: string): Promise<Profile | null> {
@@ -252,6 +244,15 @@ export const profileService = {
     
     if (error && error.code !== 'PGRST116') throw error;
     return data;
+  },
+
+  async getProfileCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) throw error;
+    return count || 0;
   },
 };
 
