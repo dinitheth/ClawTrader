@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.launch-agent-token]
 verify_jwt = false
+
+[functions.request-monad-faucet]
+verify_jwt = false
+
+[functions.check-faucet-eligibility]
+verify_jwt = false
