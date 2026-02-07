@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import { useAccount } from "wagmi";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wallet, Zap, ExternalLink, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, Zap, ExternalLink, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { requestTestnetMON } from "@/lib/monad-faucet";
 import { parseError, formatErrorForDisplay } from "@/lib/errors";
@@ -56,95 +56,90 @@ export function MonadFaucetCard() {
   }, [address]);
 
   return (
-    <Card>
-      <CardHeader className="pb-3 px-4 md:px-6">
+    <Card className="rounded-2xl border border-border">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-            <Zap className="h-4 w-4 md:h-5 md:w-5 text-secondary" />
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Zap className="w-4 h-4 text-primary" />
+            </div>
             MON Faucet
           </CardTitle>
-          <Badge variant="outline" className="text-[10px] md:text-xs">
+          <Badge variant="outline" className="text-xs rounded-full">
             Agent Faucet
           </Badge>
         </div>
-        <CardDescription className="text-xs md:text-sm">
-          Get testnet MON for gas fees
-        </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-3 md:space-y-4 px-4 md:px-6 pb-4 md:pb-6">
-        {!isConnected ? (
-          <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <Wallet className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
-            <p className="text-xs md:text-sm text-muted-foreground">
-              Connect your wallet to claim MON
-            </p>
-          </div>
-        ) : (
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Get testnet MON for gas fees on Monad Testnet.
+        </p>
+
+        {isConnected && (
           <>
             {/* Network Info */}
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3 md:p-4">
+            <div className="flex items-center justify-between rounded-xl bg-muted/50 p-3 border border-border">
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-secondary" />
-                <span className="text-xs md:text-sm text-muted-foreground">Monad Testnet</span>
+                <div className="h-2 w-2 rounded-full bg-success" />
+                <span className="text-sm text-muted-foreground">Monad Testnet</span>
               </div>
-              <span className="font-mono text-xs md:text-sm">
+              <span className="font-medium text-sm tabular-nums">
                 {address?.slice(0, 6)}...{address?.slice(-4)}
               </span>
             </div>
 
             {/* Error Display */}
             {error && (
-              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-destructive">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                <p className="text-xs">{error}</p>
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-destructive/5 border border-destructive/20">
+                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-destructive">{error}</p>
               </div>
             )}
 
-            {/* Claim Button */}
-            <Button
-              onClick={handleClaim}
-              disabled={isLoading}
-              className="w-full gap-2"
-              variant="secondary"
-              size="lg"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Requesting...
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4" />
-                  Request Testnet MON
-                </>
-              )}
-            </Button>
-
             {/* Success State */}
             {lastTxHash && (
-              <div className="flex items-center justify-between rounded-lg bg-success/10 p-3">
+              <div className="flex items-center justify-between rounded-xl bg-success/5 p-3 border border-success/20">
                 <div className="flex items-center gap-2 text-success">
                   <CheckCircle className="h-4 w-4" />
-                  <span className="text-xs md:text-sm">Request submitted</span>
+                  <span className="text-sm">Request submitted</span>
                 </div>
                 <a
                   href={`https://testnet.monadexplorer.com/tx/${lastTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-success hover:underline"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
                 >
                   View <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             )}
-
-            <p className="text-center text-[10px] md:text-xs text-muted-foreground">
-              Powered by agents.devnads.com
-            </p>
           </>
         )}
+
+        <Button
+          onClick={handleClaim}
+          disabled={!isConnected || isLoading}
+          className="w-full rounded-xl h-11"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Requesting...
+            </>
+          ) : !isConnected ? (
+            "Connect Wallet"
+          ) : (
+            <>
+              <Zap className="h-4 w-4 mr-2" />
+              Request Testnet MON
+            </>
+          )}
+        </Button>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Powered by agents.devnads.com
+        </p>
       </CardContent>
     </Card>
   );

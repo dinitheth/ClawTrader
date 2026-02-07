@@ -4,6 +4,7 @@ import { Zap, Trophy, Bot, Target, Wallet, Menu, X } from "lucide-react";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import { useState, useCallback } from 'react';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 const Header = () => {
   const { isConnected } = useAccount();
@@ -14,13 +15,13 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14 md:h-16">
           {/* Logo */}
-          <NavLink to="/" className="flex items-center gap-2 group" onClick={closeMobileMenu}>
-            <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-lg md:text-xl font-bold text-primary-foreground">C</span>
+          <NavLink to="/" className="flex items-center gap-2.5 group" onClick={closeMobileMenu}>
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-foreground flex items-center justify-center">
+              <span className="text-lg md:text-xl font-bold text-background">C</span>
             </div>
             <div className="flex flex-col">
               <span className="font-semibold text-sm md:text-base tracking-tight">
@@ -33,11 +34,11 @@ const Header = () => {
           </NavLink>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-0.5">
             <NavLink
               to="/"
-              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              activeClassName="text-primary bg-primary/10"
+              className="px-4 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeClassName="text-foreground bg-muted"
             >
               <span className="flex items-center gap-2">
                 <Zap className="w-4 h-4" />
@@ -46,8 +47,8 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/leaderboard"
-              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              activeClassName="text-primary bg-primary/10"
+              className="px-4 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeClassName="text-foreground bg-muted"
             >
               <span className="flex items-center gap-2">
                 <Trophy className="w-4 h-4" />
@@ -56,8 +57,8 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/agents"
-              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              activeClassName="text-primary bg-primary/10"
+              className="px-4 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeClassName="text-foreground bg-muted"
             >
               <span className="flex items-center gap-2">
                 <Bot className="w-4 h-4" />
@@ -66,8 +67,8 @@ const Header = () => {
             </NavLink>
             <NavLink
               to="/betting"
-              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              activeClassName="text-primary bg-primary/10"
+              className="px-4 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeClassName="text-foreground bg-muted"
             >
               <span className="flex items-center gap-2">
                 <Target className="w-4 h-4" />
@@ -76,14 +77,17 @@ const Header = () => {
             </NavLink>
           </nav>
 
-          {/* Wallet Connect - Desktop */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Right side - Desktop */}
+          <div className="hidden md:flex items-center gap-2">
             {isConnected && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 border border-border">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border">
                 <span className="text-xs text-muted-foreground">CLAW</span>
-                <span className="text-sm font-medium text-secondary">1,000</span>
+                <span className="text-sm font-medium">1,000</span>
               </div>
             )}
+            
+            <ThemeToggle />
+            
             <ConnectButton.Custom>
               {({
                 account,
@@ -113,7 +117,7 @@ const Header = () => {
                           <Button 
                             onClick={openConnectModal}
                             size="sm"
-                            className="gap-2"
+                            className="gap-2 rounded-full px-4"
                           >
                             <Wallet className="w-4 h-4" />
                             Connect
@@ -123,7 +127,7 @@ const Header = () => {
 
                       if (chain.unsupported) {
                         return (
-                          <Button onClick={openChainModal} variant="destructive" size="sm">
+                          <Button onClick={openChainModal} variant="destructive" size="sm" className="rounded-full">
                             Wrong network
                           </Button>
                         );
@@ -135,7 +139,7 @@ const Header = () => {
                             onClick={openChainModal}
                             variant="outline"
                             size="sm"
-                            className="gap-1.5 hidden lg:flex"
+                            className="gap-1.5 hidden lg:flex rounded-full"
                           >
                             {chain.hasIcon && chain.iconUrl && (
                               <img
@@ -150,7 +154,7 @@ const Header = () => {
                           <Button
                             onClick={openAccountModal}
                             size="sm"
-                            className="gap-2"
+                            className="gap-2 rounded-full"
                           >
                             {account.displayName}
                           </Button>
@@ -163,26 +167,29 @@ const Header = () => {
             </ConnectButton.Custom>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button 
-            className="md:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          {/* Mobile: Theme toggle + Menu */}
+          <div className="flex md:hidden items-center gap-1">
+            <ThemeToggle />
+            <button 
+              className="p-2 -mr-2 text-muted-foreground hover:text-foreground transition-colors rounded-full"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background">
-          <nav className="container mx-auto px-4 py-3 space-y-1">
+        <div className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-xl">
+          <nav className="container mx-auto px-4 py-4 space-y-1">
             <NavLink
               to="/"
               onClick={closeMobileMenu}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              activeClassName="text-primary bg-primary/10"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              activeClassName="text-foreground bg-muted"
             >
               <Zap className="w-5 h-5" />
               Arena
@@ -190,8 +197,8 @@ const Header = () => {
             <NavLink
               to="/leaderboard"
               onClick={closeMobileMenu}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              activeClassName="text-primary bg-primary/10"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              activeClassName="text-foreground bg-muted"
             >
               <Trophy className="w-5 h-5" />
               Leaderboard
@@ -199,8 +206,8 @@ const Header = () => {
             <NavLink
               to="/agents"
               onClick={closeMobileMenu}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              activeClassName="text-primary bg-primary/10"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              activeClassName="text-foreground bg-muted"
             >
               <Bot className="w-5 h-5" />
               My Agents
@@ -208,13 +215,13 @@ const Header = () => {
             <NavLink
               to="/betting"
               onClick={closeMobileMenu}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              activeClassName="text-primary bg-primary/10"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              activeClassName="text-foreground bg-muted"
             >
               <Target className="w-5 h-5" />
               Betting
             </NavLink>
-            <div className="pt-3 border-t border-border">
+            <div className="pt-4 border-t border-border/50">
               <ConnectButton />
             </div>
           </nav>
