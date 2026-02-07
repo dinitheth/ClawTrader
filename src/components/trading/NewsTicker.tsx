@@ -1,18 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NewsItem {
   title: string;
   link: string;
-  pubDate: string;
-  source_id: string;
+  source: string;
 }
 
-const NEWS_API_KEY = 'pub_3208b8ccb1274bff8e17c2596d8e642a';
-
-// Cache news in localStorage to save API credits
+// Cache in localStorage to reduce API calls
 const CACHE_KEY = 'clawtrader_news_cache';
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes to save API credits
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 const getCachedNews = (): { news: NewsItem[]; timestamp: number } | null => {
   try {
@@ -35,59 +32,53 @@ const setCachedNews = (news: NewsItem[]) => {
 };
 
 const FALLBACK_NEWS: NewsItem[] = [
-  { title: 'Bitcoin continues to show strength above key support levels', link: '#', pubDate: new Date().toISOString(), source_id: 'crypto' },
-  { title: 'Ethereum staking yields remain attractive for long-term holders', link: '#', pubDate: new Date().toISOString(), source_id: 'ethereum' },
-  { title: 'Institutional adoption of digital assets accelerates globally', link: '#', pubDate: new Date().toISOString(), source_id: 'market' },
-  { title: 'DeFi protocols report steady growth in total value locked', link: '#', pubDate: new Date().toISOString(), source_id: 'defi' },
-  { title: 'Layer 2 solutions see increased transaction volumes', link: '#', pubDate: new Date().toISOString(), source_id: 'technology' },
+  { title: 'Bitcoin continues to show strength above key support levels', link: '#', source: 'market' },
+  { title: 'Ethereum staking yields remain attractive for long-term holders', link: '#', source: 'ethereum' },
+  { title: 'Institutional adoption of digital assets accelerates globally', link: '#', source: 'crypto' },
+  { title: 'DeFi protocols report steady growth in total value locked', link: '#', source: 'defi' },
+  { title: 'Layer 2 solutions see increased transaction volumes', link: '#', source: 'technology' },
 ];
 
 export function NewsTicker() {
   const [news, setNews] = useState<NewsItem[]>(FALLBACK_NEWS);
-  const [isLoading, setIsLoading] = useState(true);
   const hasFetched = useRef(false);
 
   useEffect(() => {
-    // Prevent multiple fetches
     if (hasFetched.current) return;
     hasFetched.current = true;
 
     const fetchNews = async () => {
-      // Check cache first to save API credits
+      // Check local cache first
       const cached = getCachedNews();
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
         setNews(cached.news);
-        setIsLoading(false);
         return;
       }
 
       try {
-        setIsLoading(true);
-        
-        const response = await fetch(
-          `https://newsdata.io/api/1/news?apikey=${NEWS_API_KEY}&q=crypto%20OR%20bitcoin%20OR%20ethereum&language=en&category=business,technology`
-        );
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch news');
+        // Call edge function (has server-side caching too)
+        const { data, error } = await supabase.functions.invoke('fetch-crypto-news');
+
+        if (error) {
+          console.error('News fetch error:', error);
+          return;
         }
-        
-        const data = await response.json();
-        
-        if (data.results && data.results.length > 0) {
-          const newsItems = data.results.slice(0, 8);
-          setNews(newsItems);
-          setCachedNews(newsItems);
+
+        if (data?.news && data.news.length > 0) {
+          setNews(data.news);
+          setCachedNews(data.news);
         }
       } catch (err) {
-        console.error('News fetch error:', err);
-        // Use fallback - already set as default
-      } finally {
-        setIsLoading(false);
+        console.error('News fetch exception:', err);
+        // Fallback already set as default
       }
     };
 
     fetchNews();
+
+    // Auto-refresh every 30 minutes
+    const interval = setInterval(fetchNews, CACHE_DURATION);
+    return () => clearInterval(interval);
   }, []);
 
   if (news.length === 0) {
@@ -95,23 +86,23 @@ export function NewsTicker() {
   }
 
   return (
-    <div className="w-full overflow-hidden bg-muted/20 border-y border-border/50 py-2.5">
+    <div className="w-full overflow-hidden bg-muted/20 border-y border-border/50 py-2">
       <div className="relative flex overflow-hidden">
         <div className="animate-marquee flex whitespace-nowrap">
           {news.map((item, index) => (
             <a
-              key={`${item.title}-${index}`}
+              key={`news-${index}`}
               href={item.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center mx-8 text-xs hover:text-primary transition-colors"
+              className="inline-flex items-center mx-6 text-xs hover:text-primary transition-colors"
             >
               <span className="text-primary mr-2 font-bold">•</span>
               <span className="text-muted-foreground hover:text-foreground transition-colors">
                 {item.title}
               </span>
-              <span className="text-muted-foreground/50 ml-2 text-[10px] italic">
-                {item.source_id}
+              <span className="text-muted-foreground/50 ml-2 text-[10px] uppercase">
+                {item.source}
               </span>
             </a>
           ))}
@@ -119,18 +110,18 @@ export function NewsTicker() {
         <div className="animate-marquee2 absolute top-0 flex whitespace-nowrap">
           {news.map((item, index) => (
             <a
-              key={`${item.title}-dup-${index}`}
+              key={`news-dup-${index}`}
               href={item.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center mx-8 text-xs hover:text-primary transition-colors"
+              className="inline-flex items-center mx-6 text-xs hover:text-primary transition-colors"
             >
               <span className="text-primary mr-2 font-bold">•</span>
               <span className="text-muted-foreground hover:text-foreground transition-colors">
                 {item.title}
               </span>
-              <span className="text-muted-foreground/50 ml-2 text-[10px] italic">
-                {item.source_id}
+              <span className="text-muted-foreground/50 ml-2 text-[10px] uppercase">
+                {item.source}
               </span>
             </a>
           ))}

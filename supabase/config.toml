@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.claim-usdc-faucet]
 verify_jwt = false
+
+[functions.fetch-crypto-news]
+verify_jwt = false
