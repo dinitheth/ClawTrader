@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { formatEther } from "viem";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Clock, Loader2, Wallet, Droplets, AlertCircle } from "lucide-react";
+import { Coins, Clock, Loader2, Droplets, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { monadTestnet } from "@/lib/wagmi";
 import { parseError, formatErrorForDisplay, ErrorCode, createError } from "@/lib/errors";
@@ -115,41 +115,37 @@ export function ClawFaucetCard() {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3 px-4 md:px-6">
+    <Card className="rounded-2xl border border-border">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-            <Droplets className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Droplets className="w-4 h-4 text-primary" />
+            </div>
             CLAW Faucet
           </CardTitle>
-          <Badge variant="outline" className="text-[10px] md:text-xs">
+          <Badge variant="outline" className="text-xs rounded-full">
             Testnet
           </Badge>
         </div>
-        <CardDescription className="text-xs md:text-sm">
-          Claim 1,000 CLAW tokens every hour
-        </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-3 md:space-y-4 px-4 md:px-6 pb-4 md:pb-6">
-        {!isConnected ? (
-          <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <Wallet className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
-            <p className="text-xs md:text-sm text-muted-foreground">
-              Connect your wallet to claim tokens
-            </p>
-          </div>
-        ) : (
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Claim 1,000 CLAW tokens every hour for testing.
+        </p>
+
+        {isConnected && (
           <>
             {/* Balance Display */}
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3 md:p-4">
+            <div className="flex items-center justify-between rounded-xl bg-muted/50 p-4 border border-border">
               <div className="flex items-center gap-2">
-                <Coins className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                <span className="text-xs md:text-sm text-muted-foreground">
+                <Coins className="h-5 w-5 text-primary" />
+                <span className="text-sm text-muted-foreground">
                   {isContractDeployed ? "CLAW" : "MON"} Balance
                 </span>
               </div>
-              <span className="font-mono text-sm md:text-base font-medium">
+              <span className="text-lg font-semibold tabular-nums">
                 {balanceError ? (
                   <span className="text-muted-foreground">--</span>
                 ) : nativeBalance ? (
@@ -162,49 +158,54 @@ export function ClawFaucetCard() {
 
             {/* Error Display */}
             {error && (
-              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-destructive">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                <p className="text-xs">{error}</p>
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-destructive/5 border border-destructive/20">
+                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-destructive">{error}</p>
               </div>
             )}
 
-            {/* Claim Button or Countdown */}
-            {canClaim ? (
-              <Button
-                onClick={handleClaim}
-                disabled={isLoading || !isContractDeployed}
-                className="w-full gap-2"
-                size="lg"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Droplets className="h-4 w-4" />
-                    Claim 1,000 CLAW
-                  </>
-                )}
-              </Button>
-            ) : (
-              <div className="space-y-2">
-                <Button disabled className="w-full gap-2" size="lg" variant="secondary">
-                  <Clock className="h-4 w-4" />
-                  Next claim in {formatTime(countdown)}
-                </Button>
-                <p className="text-center text-[10px] md:text-xs text-muted-foreground">
-                  Cooldown expires in {formatTime(countdown)}
-                </p>
+            {/* Countdown Display */}
+            {!canClaim && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-muted border border-border">
+                <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Next claim available in</p>
+                  <p className="text-sm font-medium tabular-nums">{formatTime(countdown)}</p>
+                </div>
               </div>
             )}
           </>
         )}
 
+        {/* Claim Button */}
+        <Button
+          onClick={handleClaim}
+          disabled={!isConnected || isLoading || !canClaim || !isContractDeployed}
+          className="w-full rounded-xl h-11"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : !isConnected ? (
+            "Connect Wallet"
+          ) : !canClaim ? (
+            <>
+              <Clock className="h-4 w-4 mr-2" />
+              On Cooldown
+            </>
+          ) : (
+            <>
+              <Droplets className="h-4 w-4 mr-2" />
+              Claim 1,000 CLAW
+            </>
+          )}
+        </Button>
+
         {!isContractDeployed && isConnected && (
-          <div className="rounded-lg border border-muted bg-muted/30 p-3">
-            <p className="text-center text-[10px] md:text-xs text-muted-foreground">
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-center text-xs text-muted-foreground">
               Contract not deployed. Deploy ClawToken.sol first.
             </p>
           </div>

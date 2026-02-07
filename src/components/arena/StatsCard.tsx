@@ -21,55 +21,42 @@ const StatsCard = ({
   trend,
   variant = 'default' 
 }: StatsCardProps) => {
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'primary':
-        return 'border-primary/20';
-      case 'secondary':
-        return 'border-secondary/20';
-      case 'accent':
-        return 'border-accent/20';
-      default:
-        return 'border-border';
-    }
-  };
-
   const getIconStyles = () => {
     switch (variant) {
       case 'primary':
         return 'bg-primary/10 text-primary';
       case 'secondary':
-        return 'bg-secondary/10 text-secondary';
+        return 'bg-secondary text-secondary-foreground';
       case 'accent':
-        return 'bg-accent/10 text-accent';
+        return 'bg-accent text-accent-foreground';
       default:
         return 'bg-muted text-muted-foreground';
     }
   };
 
   return (
-    <Card className={`card-glow ${getVariantStyles()}`}>
-      <CardContent className="p-3 md:p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-0.5 md:space-y-1 min-w-0 flex-1">
-            <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wide truncate">
+    <Card className="rounded-2xl border border-border transition-all duration-200 hover:shadow-sm">
+      <CardContent className="p-4 md:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1 min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium truncate">
               {title}
             </p>
-            <p className="text-lg md:text-2xl font-semibold tabular-nums">
+            <p className="text-2xl md:text-3xl font-semibold tabular-nums tracking-tight">
               {value}
             </p>
             {subtitle && (
-              <p className="text-[10px] md:text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {subtitle}
               </p>
             )}
             {trend && (
-              <p className={`text-[10px] md:text-xs font-medium ${trend.isPositive ? 'text-success' : 'text-destructive'}`}>
+              <p className={`text-xs font-medium ${trend.isPositive ? 'text-success' : 'text-destructive'}`}>
                 {trend.isPositive ? '+' : '-'}{Math.abs(trend.value)}%
               </p>
             )}
           </div>
-          <div className={`p-2 md:p-2.5 rounded-lg flex-shrink-0 ${getIconStyles()}`}>
+          <div className={`p-2.5 rounded-xl flex-shrink-0 ${getIconStyles()}`}>
             {icon}
           </div>
         </div>
