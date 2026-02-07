@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Leaderboard from "./pages/Leaderboard";
 import Agents from "./pages/Agents";
 import Betting from "./pages/Betting";
+import Trading from "./pages/Trading";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -22,6 +23,7 @@ const App = () => (
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/betting" element={<Betting />} />
+            <Route path="/trading" element={<Trading />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

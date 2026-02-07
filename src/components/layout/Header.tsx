@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Zap, Trophy, Bot, Target, Menu, X } from "lucide-react";
+import { Zap, Trophy, Bot, Target, Menu, X, Activity } from "lucide-react";
 import { useState, useCallback } from 'react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { ConnectButton } from '@/components/wallet/ConnectButton';
@@ -72,6 +72,16 @@ const Header = () => {
                 Betting
               </span>
             </NavLink>
+            <NavLink
+              to="/trading"
+              className="px-4 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeClassName="text-foreground bg-muted"
+            >
+              <span className="flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Trading
+              </span>
+            </NavLink>
           </nav>
 
           {/* Right side - Desktop */}
@@ -133,6 +143,15 @@ const Header = () => {
             >
               <Target className="w-5 h-5" />
               Betting
+            </NavLink>
+            <NavLink
+              to="/trading"
+              onClick={closeMobileMenu}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              activeClassName="text-foreground bg-muted"
+            >
+              <Activity className="w-5 h-5" />
+              Trading
             </NavLink>
             <div className="pt-4 border-t border-border/50">
               <ConnectButton />

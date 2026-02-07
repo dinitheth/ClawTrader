@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.check-faucet-eligibility]
 verify_jwt = false
+
+[functions.ai-trading-analysis]
+verify_jwt = false
