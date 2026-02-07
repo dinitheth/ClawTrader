@@ -4,11 +4,12 @@ import Layout from '@/components/layout/Layout';
 import { TradingViewChart, SymbolSelector, IntervalSelector } from '@/components/trading';
 import { FundAgentModal } from '@/components/trading/FundAgentModal';
 import { AgentPortfolio } from '@/components/trading/AgentPortfolio';
+import { ExecuteTradeModal } from '@/components/trading/ExecuteTradeModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle } from 'lucide-react';
+import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle, ExternalLink } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { agentService } from '@/lib/api';
 import { getAITradingAnalysis, fetchMarketData, getCoinGeckoId, type TradingDecision, type AgentDNA } from '@/lib/trading-service';
@@ -23,6 +24,7 @@ interface Trade {
   price: number;
   timestamp: string;
   pnl?: number;
+  txHash?: string;
 }
 
 const Trading = () => {
@@ -40,6 +42,7 @@ const Trading = () => {
   const [isAutoTrading, setIsAutoTrading] = useState(false);
   const [decision, setDecision] = useState<TradingDecision | null>(null);
   const [showFundModal, setShowFundModal] = useState(false);
+  const [showExecuteModal, setShowExecuteModal] = useState(false);
   const [agentBalance, setAgentBalance] = useState(0);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [analysisHistory, setAnalysisHistory] = useState<Array<{
@@ -192,6 +195,27 @@ const Trading = () => {
 
   const handleFundAgent = (amount: number) => {
     setAgentBalance(prev => prev + amount);
+  };
+
+  const handleTradeComplete = (txHash: string, success: boolean) => {
+    if (success && decision) {
+      const tradeAmount = (agentBalance * decision.suggestedAmount) / 100;
+      const trade: Trade = {
+        id: crypto.randomUUID(),
+        action: decision.action as 'BUY' | 'SELL',
+        symbol: symbol.split(':')[1],
+        amount: tradeAmount,
+        price: 0, // Would need to fetch actual price
+        timestamp: new Date().toISOString(),
+        txHash,
+      };
+      setTrades(prev => [trade, ...prev]);
+      
+      toast({
+        title: 'Trade Executed On-Chain!',
+        description: `${selectedAgent?.avatar} ${selectedAgent?.name} ${decision.action === 'BUY' ? 'bought' : 'sold'} ${tradeAmount.toFixed(4)} MON`,
+      });
+    }
   };
 
   const toggleAutoTrading = () => {
@@ -456,6 +480,23 @@ const Trading = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Execute Trade Button */}
+                    {decision.action !== 'HOLD' && (
+                      <Button
+                        onClick={() => setShowExecuteModal(true)}
+                        disabled={agentBalance <= 0}
+                        className={`w-full gap-2 mt-4 ${
+                          decision.action === 'BUY' 
+                            ? 'bg-gradient-to-r from-accent to-accent/80' 
+                            : 'bg-gradient-to-r from-destructive to-destructive/80'
+                        }`}
+                      >
+                        <Zap className="w-4 h-4" />
+                        Execute {decision.action} on Monad DEX
+                        <ExternalLink className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -495,6 +536,16 @@ const Trading = () => {
         onOpenChange={setShowFundModal}
         agent={selectedAgent ? { ...selectedAgent, balance: agentBalance } : null}
         onFunded={handleFundAgent}
+      />
+
+      {/* Execute Trade Modal */}
+      <ExecuteTradeModal
+        open={showExecuteModal}
+        onOpenChange={setShowExecuteModal}
+        decision={decision}
+        agent={selectedAgent ? { ...selectedAgent, balance: agentBalance } : null}
+        symbol={symbol}
+        onTradeComplete={handleTradeComplete}
       />
     </Layout>
   );
