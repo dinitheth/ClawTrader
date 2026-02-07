@@ -1,5 +1,5 @@
-import { http } from 'wagmi';
-import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { http, createConfig } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 
 // Monad Testnet Chain Definition (Chain ID: 10143)
 export const monadTestnet = {
@@ -54,13 +54,16 @@ export const NAD_CONTRACTS = {
   LENS: '0xB056d79CA5257589692699a46623F901a3BB76f1',
 } as const;
 
-// RainbowKit configuration - only allow specific wallets (no WalletConnect, no Base)
-export const config = getDefaultConfig({
-  appName: 'ClawTrader',
-  projectId: 'clawtrader-monad-arena',
+// Wagmi configuration - only injected wallets (MetaMask, Rabby, etc.)
+export const config = createConfig({
   chains: [monadTestnet],
+  connectors: [
+    injected({
+      shimDisconnect: true,
+    }),
+  ],
   transports: {
-    [monadTestnet.id]: http(),
+    [monadTestnet.id]: http('https://testnet-rpc.monad.xyz'),
   },
 });
 
