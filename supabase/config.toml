@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.ai-trading-analysis]
 verify_jwt = false
+
+[functions.execute-agent-trade]
+verify_jwt = false
