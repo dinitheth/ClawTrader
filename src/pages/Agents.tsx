@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { useAccount } from 'wagmi';
 import { useToast } from '@/hooks/use-toast';
 
 const Agents = () => {
+  const navigate = useNavigate();
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -178,39 +180,39 @@ const Agents = () => {
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-4">
-                      <div className="text-center p-3 rounded-lg bg-muted/30">
-                        <p className="text-xs text-muted-foreground mb-1">Win Rate</p>
-                        <p className="font-display font-bold text-lg">{getWinRate(agent)}%</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4 mb-4">
+                      <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
+                        <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Win Rate</p>
+                        <p className="font-display font-bold text-base md:text-lg">{getWinRate(agent)}%</p>
                       </div>
-                      <div className="text-center p-3 rounded-lg bg-muted/30">
-                        <p className="text-xs text-muted-foreground mb-1">Matches</p>
-                        <p className="font-display font-bold text-lg">{agent.total_matches || 0}</p>
+                      <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
+                        <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Matches</p>
+                        <p className="font-display font-bold text-base md:text-lg">{agent.total_matches || 0}</p>
                       </div>
-                      <div className="text-center p-3 rounded-lg bg-muted/30">
-                        <p className="text-xs text-muted-foreground mb-1">Total P&L</p>
+                      <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
+                        <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Total P&L</p>
                         <div className={`flex items-center justify-center gap-1 ${getRecentPnL(agent) >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                          {getRecentPnL(agent) >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                          <span className="font-display font-bold text-lg">
+                          {getRecentPnL(agent) >= 0 ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4" /> : <TrendingDown className="w-3 h-3 md:w-4 md:h-4" />}
+                          <span className="font-display font-bold text-base md:text-lg">
                             {getRecentPnL(agent) >= 0 ? '+' : ''}{getRecentPnL(agent).toFixed(1)}%
                           </span>
                         </div>
                       </div>
                       {agent.token_address && (
                         <>
-                          <div className="text-center p-3 rounded-lg bg-muted/30">
-                            <p className="text-xs text-muted-foreground mb-1">Market Cap</p>
-                            <p className="font-display font-bold text-lg text-primary">
+                          <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
+                            <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Market Cap</p>
+                            <p className="font-display font-bold text-base md:text-lg text-primary">
                               ${Number(agent.token_market_cap || 0).toLocaleString()}
                             </p>
                           </div>
-                          <div className="text-center p-3 rounded-lg bg-muted/30">
-                            <p className="text-xs text-muted-foreground mb-1">Holders</p>
-                            <p className="font-display font-bold text-lg">{agent.token_holders || 0}</p>
+                          <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
+                            <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Holders</p>
+                            <p className="font-display font-bold text-base md:text-lg">{agent.token_holders || 0}</p>
                           </div>
-                          <div className="text-center p-3 rounded-lg bg-muted/30">
-                            <p className="text-xs text-muted-foreground mb-1">Rev Share</p>
-                            <p className="font-display font-bold text-lg text-secondary">
+                          <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
+                            <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Rev Share</p>
+                            <p className="font-display font-bold text-base md:text-lg text-secondary">
                               {agent.revenue_share_enabled ? `${agent.revenue_share_percentage}%` : 'Off'}
                             </p>
                           </div>
@@ -244,14 +246,14 @@ const Agents = () => {
                     </div>
 
                     {/* Balance & Actions */}
-                    <div className="flex items-center justify-between pt-4 border-t border-border flex-wrap gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 border-t border-border gap-3 sm:gap-4">
                       <div>
-                        <p className="text-xs text-muted-foreground">Balance</p>
-                        <p className="font-display font-bold text-accent text-lg">
-                          {Number(agent.balance || 0).toLocaleString()} <span className="text-xs text-muted-foreground">$CLAW</span>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">Balance</p>
+                        <p className="font-display font-bold text-accent text-base md:text-lg">
+                          {Number(agent.balance || 0).toLocaleString()} <span className="text-[10px] md:text-xs text-muted-foreground">USDC</span>
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                         {!agent.token_address ? (
                           <Button 
                             variant="outline" 
@@ -284,6 +286,7 @@ const Agents = () => {
                           size="sm" 
                           className="gap-1 bg-primary hover:bg-primary/90"
                           disabled={agent.is_in_match}
+                          onClick={() => navigate(`/trading?agent=${agent.id}`)}
                         >
                           <Zap className="w-4 h-4" />
                           Enter Arena

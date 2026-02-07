@@ -3,7 +3,7 @@ import { Zap, Trophy, Bot, Target, Menu, X, Activity } from "lucide-react";
 import { useState, useCallback } from 'react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { ConnectButton } from '@/components/wallet/ConnectButton';
-
+import { FaucetButton } from '@/components/header/FaucetButton';
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -86,12 +86,14 @@ const Header = () => {
 
           {/* Right side - Desktop */}
           <div className="hidden md:flex items-center gap-2">
+            <FaucetButton />
             <ThemeToggle />
             <ConnectButton />
           </div>
 
-          {/* Mobile: Theme toggle + Menu */}
+          {/* Mobile: Theme toggle + Faucet + Menu */}
           <div className="flex md:hidden items-center gap-1">
+            <FaucetButton />
             <ThemeToggle />
             <button 
               className="p-2 -mr-2 text-muted-foreground hover:text-foreground transition-colors rounded-full"
