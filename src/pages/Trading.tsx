@@ -6,12 +6,13 @@ import { FundAgentModal } from '@/components/trading/FundAgentModal';
 import { AgentPortfolio } from '@/components/trading/AgentPortfolio';
 import { ExecuteTradeModal } from '@/components/trading/ExecuteTradeModal';
 import { LatestDecisionCard } from '@/components/trading/LatestDecisionCard';
-import { CryptoNewsCard } from '@/components/trading/CryptoNewsCard';
+import { NewsTicker } from '@/components/trading/NewsTicker';
+import { WithdrawModal } from '@/components/trading/WithdrawModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle, ExternalLink, DollarSign } from 'lucide-react';
+import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle, DollarSign, ArrowDown } from 'lucide-react';
 import { useAccount, useReadContract } from 'wagmi';
 import { agentService } from '@/lib/api';
 import { getAITradingAnalysis, fetchMarketData, getCoinGeckoId, type TradingDecision, type AgentDNA } from '@/lib/trading-service';
@@ -19,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { USDC_CONFIG, ERC20_ABI, formatUSDC } from '@/lib/usdc-config';
+import { parseError, formatErrorForDisplay } from '@/lib/errors';
 
 interface Trade {
   id: string;
@@ -46,6 +48,7 @@ const Trading = () => {
   const [isAutoTrading, setIsAutoTrading] = useState(false);
   const [decision, setDecision] = useState<TradingDecision | null>(null);
   const [showFundModal, setShowFundModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showExecuteModal, setShowExecuteModal] = useState(false);
   const [agentBalance, setAgentBalance] = useState(0);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -80,7 +83,9 @@ const Trading = () => {
         setSelectedAgentId(allAgents[0].id);
       }
     } catch (error) {
-      console.error('Error loading agents:', error);
+      const appError = parseError(error);
+      const { title, description } = formatErrorForDisplay(appError);
+      toast({ title, description, variant: 'destructive' });
     } finally {
       setIsLoadingAgents(false);
     }
@@ -88,12 +93,37 @@ const Trading = () => {
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
 
-  // Update balance when agent changes
+  // Update balance when agent changes - use real database balance
   useEffect(() => {
     if (selectedAgent) {
       setAgentBalance(Number(selectedAgent.balance) || 0);
     }
   }, [selectedAgent]);
+
+  // Refresh agent data periodically to get updated balance
+  useEffect(() => {
+    if (!selectedAgentId) return;
+    
+    const refreshAgent = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('id', selectedAgentId)
+          .single();
+        
+        if (!error && data) {
+          setAgentBalance(Number(data.balance) || 0);
+          setAgents(prev => prev.map(a => a.id === data.id ? data : a));
+        }
+      } catch (err) {
+        // Silent refresh failure
+      }
+    };
+
+    const interval = setInterval(refreshAgent, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, [selectedAgentId]);
 
   const handleAnalyze = useCallback(async () => {
     if (!selectedAgent) {
@@ -108,7 +138,7 @@ const Trading = () => {
       const marketData = await fetchMarketData(coinId);
 
       if (!marketData) {
-        throw new Error('Failed to fetch market data');
+        throw new Error('Unable to fetch market data. Please try again.');
       }
 
       const agentDNA: AgentDNA = {
@@ -140,12 +170,9 @@ const Trading = () => {
         throw new Error(result.error || 'Analysis failed');
       }
     } catch (error) {
-      console.error('Analysis error:', error);
-      toast({ 
-        title: 'Analysis Failed', 
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive' 
-      });
+      const appError = parseError(error);
+      const { title, description } = formatErrorForDisplay(appError);
+      toast({ title, description, variant: 'destructive' });
       return null;
     } finally {
       setIsAnalyzing(false);
@@ -156,7 +183,7 @@ const Trading = () => {
   const lastTradeTime = useRef<number>(0);
   const TRADE_COOLDOWN = 30000; // 30 seconds
 
-  // Autonomous trading loop using backend edge function
+  // Autonomous trading loop - FULLY AUTOMATIC
   useEffect(() => {
     if (!isAutoTrading || !selectedAgent || agentBalance <= 0) return;
 
@@ -171,10 +198,9 @@ const Trading = () => {
       try {
         setIsAnalyzing(true);
         
-        // Get CoinGecko ID for the symbol
         const coinId = getCoinGeckoId(symbol);
         
-        // Call the edge function
+        // Call the edge function - AUTOMATIC execution
         const { data, error } = await supabase.functions.invoke('execute-agent-trade', {
           body: {
             agentId: selectedAgent.id,
@@ -183,10 +209,10 @@ const Trading = () => {
         });
 
         if (error) {
-          console.error('Autonomous trade error:', error);
+          const appError = parseError(error);
           toast({ 
             title: 'Trade Error', 
-            description: error.message,
+            description: appError.message,
             variant: 'destructive' 
           });
           return;
@@ -197,7 +223,7 @@ const Trading = () => {
           setDecision(tradeDecision);
           
           if (trade.executed) {
-            // Update local balance
+            // Update local balance from server response
             setAgentBalance(trade.newBalance);
             
             // Add to trades list
@@ -238,7 +264,7 @@ const Trading = () => {
     // Initial trade
     runAutonomousTrade();
 
-    // Run every 30 seconds
+    // Run every 30 seconds automatically
     intervalId = setInterval(runAutonomousTrade, TRADE_COOLDOWN);
 
     return () => {
@@ -246,29 +272,30 @@ const Trading = () => {
     };
   }, [isAutoTrading, selectedAgent?.id, agentBalance, symbol, toast]);
 
-  const handleFundAgent = (amount: number) => {
-    setAgentBalance(prev => prev + amount);
-  };
-
-  const handleTradeComplete = (txHash: string, success: boolean) => {
-    if (success && decision) {
-      const tradeAmount = (agentBalance * decision.suggestedAmount) / 100;
-      const trade: Trade = {
-        id: crypto.randomUUID(),
-        action: decision.action as 'BUY' | 'SELL',
-        symbol: symbol.split(':')[1],
-        amount: tradeAmount,
-        price: 0,
-        timestamp: new Date().toISOString(),
-        txHash,
-      };
-      setTrades(prev => [trade, ...prev]);
+  const handleFundAgent = async (amount: number) => {
+    if (!selectedAgent) return;
+    
+    // Update database
+    const newBalance = agentBalance + amount;
+    try {
+      const { error } = await supabase
+        .from('agents')
+        .update({ balance: newBalance })
+        .eq('id', selectedAgent.id);
       
+      if (error) throw error;
+      setAgentBalance(newBalance);
+    } catch (err) {
       toast({
-        title: 'Trade Executed On-Chain!',
-        description: `${selectedAgent?.avatar} ${selectedAgent?.name} ${decision.action === 'BUY' ? 'bought' : 'sold'} ${tradeAmount.toFixed(2)} USDC`,
+        title: 'Fund Failed',
+        description: 'Unable to update agent balance',
+        variant: 'destructive',
       });
     }
+  };
+
+  const handleWithdraw = (amount: number) => {
+    setAgentBalance(prev => Math.max(0, prev - amount));
   };
 
   const toggleAutoTrading = () => {
@@ -285,7 +312,7 @@ const Trading = () => {
     if (!isAutoTrading) {
       toast({ 
         title: 'Autonomous Trading Started', 
-        description: `${selectedAgent?.avatar} ${selectedAgent?.name} will now analyze and trade automatically` 
+        description: `${selectedAgent?.avatar} ${selectedAgent?.name} will now trade automatically every 30 seconds` 
       });
     }
   };
@@ -297,256 +324,252 @@ const Trading = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 space-y-6">
+      <div className="min-h-screen">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Activity className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl md:text-4xl font-display font-bold">AUTONOMOUS TRADING</h1>
-            </div>
-            <p className="text-muted-foreground">
-              Fund your agent with USDC and let AI trade autonomously
-            </p>
-          </div>
+        <div className="container mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+                  <Activity className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+                  <h1 className="text-xl md:text-3xl lg:text-4xl font-display font-bold">AUTONOMOUS TRADING</h1>
+                </div>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  Fund your agent with USDC and let AI trade autonomously
+                </p>
+              </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <SymbolSelector value={symbol} onValueChange={setSymbol} />
-            <IntervalSelector value={chartInterval} onValueChange={setChartInterval} />
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                <SymbolSelector value={symbol} onValueChange={setSymbol} />
+                <IntervalSelector value={chartInterval} onValueChange={setChartInterval} />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Chart + Latest AI Decision + News */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Chart */}
-            <Card className="overflow-hidden">
-              <div className="h-[400px]">
-                <TradingViewChart
-                  symbol={symbol}
-                  interval={chartInterval}
-                  theme={theme === 'dark' ? 'dark' : 'light'}
-                  height={400}
-                  autosize={false}
-                />
-              </div>
-            </Card>
+        {/* News Ticker */}
+        <NewsTicker />
 
-            {/* Latest AI Decision Card - Below Chart */}
-            <LatestDecisionCard
-              decision={decision}
-              agentName={selectedAgent?.name}
-              timestamp={analysisHistory[0]?.timestamp}
-            />
-
-            {/* Crypto News Headlines - Below Decision */}
-            <CryptoNewsCard />
-          </div>
-
-          {/* Right Panel */}
-          <div className="space-y-6">
-            {/* Wallet USDC Balance */}
-            {isConnected && (
-              <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-5 h-5 text-primary" />
-                      <span className="text-sm text-muted-foreground">Wallet USDC</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-mono font-bold">{formattedWalletBalance}</p>
-                      <p className="text-xs text-muted-foreground">USDC</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Agent Selector */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Bot className="w-4 h-4" />
-                  Select Trading Agent
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingAgents ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  </div>
-                ) : agents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No agents created yet. Create one to start trading!
-                  </p>
-                ) : (
-                  <Select value={selectedAgentId || ''} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose an agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          <span className="flex items-center gap-2">
-                            <span>{agent.avatar}</span>
-                            <span>{agent.name}</span>
-                            <Badge variant="outline" className="text-xs capitalize ml-2">
-                              {agent.personality}
-                            </Badge>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-
-                {selectedAgent && (
-                  <div className="mt-4 p-3 rounded-lg bg-muted/30 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{selectedAgent.avatar}</span>
-                      <div>
-                        <p className="font-medium">{selectedAgent.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{selectedAgent.personality}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-5 gap-1 text-center">
-                      <div>
-                        <div className="text-xs text-muted-foreground">AGR</div>
-                        <div className="text-sm font-mono">{Math.round(Number(selectedAgent.dna_aggression) * 100)}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">RSK</div>
-                        <div className="text-sm font-mono">{Math.round(Number(selectedAgent.dna_risk_tolerance) * 100)}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">PTN</div>
-                        <div className="text-sm font-mono">{Math.round(Number(selectedAgent.dna_pattern_recognition) * 100)}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">TMG</div>
-                        <div className="text-sm font-mono">{Math.round(Number(selectedAgent.dna_timing_sensitivity) * 100)}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">CTR</div>
-                        <div className="text-sm font-mono">{Math.round(Number(selectedAgent.dna_contrarian_bias) * 100)}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="mt-4 space-y-2">
-                  <Button
-                    onClick={() => setShowFundModal(true)}
-                    disabled={!selectedAgent}
-                    variant="outline"
-                    className="w-full gap-2"
-                  >
-                    <Wallet className="w-4 h-4" />
-                    Fund Agent
-                  </Button>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      onClick={() => handleAnalyze()}
-                      disabled={!selectedAgent || isAnalyzing || isAutoTrading}
-                      variant="outline"
-                      className="gap-2"
-                    >
-                      {isAnalyzing ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Brain className="w-4 h-4" />
-                      )}
-                      Analyze
-                    </Button>
-
-                    <Button
-                      onClick={toggleAutoTrading}
-                      disabled={!selectedAgent}
-                      className={`gap-2 ${isAutoTrading ? 'bg-destructive hover:bg-destructive/90' : 'bg-gradient-to-r from-primary to-secondary'}`}
-                    >
-                      {isAutoTrading ? (
-                        <>
-                          <Square className="w-4 h-4" />
-                          Stop
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-4 h-4" />
-                          Auto Trade
-                        </>
-                      )}
-                    </Button>
-                  </div>
+        <div className="container mx-auto px-4 py-4 md:py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+            {/* Left Column: Chart + Latest AI Decision */}
+            <div className="lg:col-span-2 space-y-4 md:space-y-6">
+              {/* Chart */}
+              <Card className="overflow-hidden">
+                <div className="h-[300px] md:h-[400px]">
+                  <TradingViewChart
+                    symbol={symbol}
+                    interval={chartInterval}
+                    theme={theme === 'dark' ? 'dark' : 'light'}
+                    height={400}
+                    autosize={true}
+                  />
                 </div>
+              </Card>
 
-                {/* Auto Trading Status */}
-                {isAutoTrading && (
-                  <div className="mt-3 p-2 rounded-lg bg-accent/10 border border-accent/30 text-center">
-                    <div className="flex items-center justify-center gap-2 text-accent text-sm">
-                      <Activity className="w-4 h-4 animate-pulse" />
-                      <span>Autonomous trading active</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Analyzing every 30 seconds
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Agent Portfolio */}
-            {selectedAgent && (
-              <AgentPortfolio
-                agent={{ ...selectedAgent, balance: agentBalance }}
-                trades={trades}
-                isTrading={isAutoTrading}
+              {/* Latest AI Decision Card - Below Chart */}
+              <LatestDecisionCard
+                decision={decision}
+                agentName={selectedAgent?.name}
+                timestamp={analysisHistory[0]?.timestamp}
               />
-            )}
+            </div>
 
-            {/* Execute Trade Button (when decision exists) */}
-            {decision && decision.action !== 'HOLD' && (
-              <Button
-                onClick={() => setShowExecuteModal(true)}
-                disabled={agentBalance <= 0}
-                className={`w-full gap-2 ${
-                  decision.action === 'BUY' 
-                    ? 'bg-gradient-to-r from-accent to-accent/80' 
-                    : 'bg-gradient-to-r from-destructive to-destructive/80'
-                }`}
-              >
-                <Zap className="w-4 h-4" />
-                Execute {decision.action} on DEX
-                <ExternalLink className="w-3 h-3" />
-              </Button>
-            )}
+            {/* Right Panel */}
+            <div className="space-y-4 md:space-y-6">
+              {/* Wallet USDC Balance */}
+              {isConnected && (
+                <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
+                  <CardContent className="py-3 md:py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                        <span className="text-xs md:text-sm text-muted-foreground">Wallet USDC</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg md:text-xl font-mono font-bold">{formattedWalletBalance}</p>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">USDC</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-            {/* No Balance Warning */}
-            {selectedAgent && agentBalance <= 0 && !decision && (
-              <Card className="border-warning/30 bg-warning/5">
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-warning">Fund Your Agent</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Add USDC to your agent's balance to enable autonomous trading. The agent will analyze real market data and execute trades.
-                      </p>
-                      <Button 
-                        onClick={() => setShowFundModal(true)} 
-                        size="sm" 
-                        className="mt-3 gap-2"
+              {/* Agent Selector */}
+              <Card>
+                <CardHeader className="pb-2 md:pb-3">
+                  <CardTitle className="text-xs md:text-sm flex items-center gap-2">
+                    <Bot className="w-4 h-4" />
+                    Select Trading Agent
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 md:space-y-4">
+                  {isLoadingAgents ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    </div>
+                  ) : agents.length === 0 ? (
+                    <p className="text-xs md:text-sm text-muted-foreground text-center py-4">
+                      No agents created yet. Create one to start trading!
+                    </p>
+                  ) : (
+                    <Select value={selectedAgentId || ''} onValueChange={setSelectedAgentId}>
+                      <SelectTrigger className="text-sm">
+                        <SelectValue placeholder="Choose an agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {agents.map((agent) => (
+                          <SelectItem key={agent.id} value={agent.id}>
+                            <span className="flex items-center gap-2">
+                              <span>{agent.avatar}</span>
+                              <span className="truncate">{agent.name}</span>
+                              <Badge variant="outline" className="text-[10px] capitalize ml-1">
+                                {agent.personality}
+                              </Badge>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {selectedAgent && (
+                    <div className="p-2 md:p-3 rounded-lg bg-muted/30 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl md:text-2xl">{selectedAgent.avatar}</span>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm md:text-base truncate">{selectedAgent.name}</p>
+                          <p className="text-[10px] md:text-xs text-muted-foreground capitalize">{selectedAgent.personality}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-5 gap-1 text-center">
+                        {[
+                          { label: 'AGR', value: selectedAgent.dna_aggression },
+                          { label: 'RSK', value: selectedAgent.dna_risk_tolerance },
+                          { label: 'PTN', value: selectedAgent.dna_pattern_recognition },
+                          { label: 'TMG', value: selectedAgent.dna_timing_sensitivity },
+                          { label: 'CTR', value: selectedAgent.dna_contrarian_bias },
+                        ].map(stat => (
+                          <div key={stat.label}>
+                            <div className="text-[9px] md:text-xs text-muted-foreground">{stat.label}</div>
+                            <div className="text-xs md:text-sm font-mono">{Math.round(Number(stat.value) * 100)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => setShowFundModal(true)}
+                        disabled={!selectedAgent}
+                        variant="outline"
+                        className="gap-1 md:gap-2 text-xs md:text-sm"
+                        size="sm"
                       >
-                        <Wallet className="w-4 h-4" />
-                        Fund Agent Now
+                        <Wallet className="w-3 h-3 md:w-4 md:h-4" />
+                        Fund Agent
+                      </Button>
+                      <Button
+                        onClick={() => setShowWithdrawModal(true)}
+                        disabled={!selectedAgent || agentBalance <= 0}
+                        variant="outline"
+                        className="gap-1 md:gap-2 text-xs md:text-sm"
+                        size="sm"
+                      >
+                        <ArrowDown className="w-3 h-3 md:w-4 md:h-4" />
+                        Withdraw
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => handleAnalyze()}
+                        disabled={!selectedAgent || isAnalyzing || isAutoTrading}
+                        variant="outline"
+                        className="gap-1 md:gap-2 text-xs md:text-sm"
+                        size="sm"
+                      >
+                        {isAnalyzing ? (
+                          <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
+                        ) : (
+                          <Brain className="w-3 h-3 md:w-4 md:h-4" />
+                        )}
+                        Analyze
+                      </Button>
+
+                      <Button
+                        onClick={toggleAutoTrading}
+                        disabled={!selectedAgent}
+                        className={`gap-1 md:gap-2 text-xs md:text-sm ${isAutoTrading ? 'bg-destructive hover:bg-destructive/90' : 'bg-gradient-to-r from-primary to-secondary'}`}
+                        size="sm"
+                      >
+                        {isAutoTrading ? (
+                          <>
+                            <Square className="w-3 h-3 md:w-4 md:h-4" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3 h-3 md:w-4 md:h-4" />
+                            Auto Trade
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
+
+                  {/* Auto Trading Status */}
+                  {isAutoTrading && (
+                    <div className="p-2 rounded-lg bg-accent/10 border border-accent/30 text-center">
+                      <div className="flex items-center justify-center gap-2 text-accent text-xs md:text-sm">
+                        <Activity className="w-3 h-3 md:w-4 md:h-4 animate-pulse" />
+                        <span>Auto trading active</span>
+                      </div>
+                      <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
+                        Executing every 30 seconds
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            )}
+
+              {/* Agent Portfolio */}
+              {selectedAgent && (
+                <AgentPortfolio
+                  agent={{ ...selectedAgent, balance: agentBalance }}
+                  trades={trades}
+                  isTrading={isAutoTrading}
+                />
+              )}
+
+              {/* No Balance Warning */}
+              {selectedAgent && agentBalance <= 0 && !decision && (
+                <Card className="border-warning/30 bg-warning/5">
+                  <CardContent className="py-3 md:py-4">
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-warning flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-warning text-sm md:text-base">Fund Your Agent</p>
+                        <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                          Add USDC to your agent's vault to enable autonomous trading.
+                        </p>
+                        <Button 
+                          onClick={() => setShowFundModal(true)} 
+                          size="sm" 
+                          className="mt-2 md:mt-3 gap-1 md:gap-2 text-xs md:text-sm"
+                        >
+                          <Wallet className="w-3 h-3 md:w-4 md:h-4" />
+                          Fund Agent Now
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -559,14 +582,22 @@ const Trading = () => {
         onFunded={handleFundAgent}
       />
 
-      {/* Execute Trade Modal */}
+      {/* Withdraw Modal */}
+      <WithdrawModal
+        open={showWithdrawModal}
+        onOpenChange={setShowWithdrawModal}
+        agent={selectedAgent ? { ...selectedAgent, balance: agentBalance } : null}
+        onWithdrawn={handleWithdraw}
+      />
+
+      {/* Execute Trade Modal - kept for manual execution */}
       <ExecuteTradeModal
         open={showExecuteModal}
         onOpenChange={setShowExecuteModal}
         decision={decision}
         agent={selectedAgent ? { ...selectedAgent, balance: agentBalance } : null}
         symbol={symbol}
-        onTradeComplete={handleTradeComplete}
+        onTradeComplete={() => {}}
       />
     </Layout>
   );
