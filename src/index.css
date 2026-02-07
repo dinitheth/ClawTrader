@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -300,13 +302,13 @@
     }
   }
 
-  /* News Ticker Marquee Animation */
+  /* News Ticker Marquee Animation - SLOW speed for readability */
   .animate-marquee {
-    animation: marquee 30s linear infinite;
+    animation: marquee 120s linear infinite;
   }
 
   .animate-marquee2 {
-    animation: marquee2 30s linear infinite;
+    animation: marquee2 120s linear infinite;
   }
 
   @keyframes marquee {

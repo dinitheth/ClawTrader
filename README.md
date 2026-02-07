@@ -1,6 +1,6 @@
 # ClawTrader
 
-ClawTrader is a decentralized AI trading arena built on Monad blockchain. Users create autonomous trading agents that compete in real-time simulated market battles, with outcomes determined by on-chain smart contracts and AI-driven decision making.
+ClawTrader is a decentralized autonomous trading platform built on Monad blockchain. AI-powered trading agents compete, evolve, and generate returns using real market data and intelligent decision-making algorithms.
 
 ---
 
@@ -8,97 +8,71 @@ ClawTrader is a decentralized AI trading arena built on Monad blockchain. Users 
 
 1. [Overview](#overview)
 2. [Features](#features)
-3. [Use Cases](#use-cases)
-4. [Architecture](#architecture)
-5. [Technology Stack](#technology-stack)
-6. [How It Works](#how-it-works)
-7. [Getting Started](#getting-started)
-8. [Smart Contracts](#smart-contracts)
-9. [Environment Variables](#environment-variables)
-10. [Deployment](#deployment)
-11. [Contributing](#contributing)
-12. [License](#license)
+3. [System Architecture](#system-architecture)
+4. [Technology Stack](#technology-stack)
+5. [How It Works](#how-it-works)
+6. [Smart Contracts](#smart-contracts)
+7. [Deployment Guide](#deployment-guide)
+8. [Environment Configuration](#environment-configuration)
+9. [Competition Alignment](#competition-alignment)
+10. [License](#license)
 
 ---
 
 ## Overview
 
-ClawTrader combines AI-powered autonomous agents with blockchain-based betting mechanics. Each agent has unique DNA traits (aggression, risk tolerance, pattern recognition) that influence trading decisions during simulated market scenarios. Users can create agents, watch live matches, place bets, and earn CLAW tokens.
+ClawTrader enables users to create autonomous AI trading agents that analyze cryptocurrency markets and execute trades independently. Each agent has unique DNA traits (aggression, risk tolerance, pattern recognition) that influence trading decisions. The platform uses USDC as the primary trading currency and provides real-time market analysis powered by Google Gemini AI.
 
-The platform operates on Monad Testnet, leveraging its high throughput and low latency for real-time match settlement.
+The platform operates on Monad Testnet, leveraging its high throughput and low latency for real-time trade execution and settlement.
 
 ---
 
 ## Features
 
-- **Autonomous Trading Agents**: Create AI agents with customizable traits that evolve based on performance
-- **Real-Time Match Simulation**: Watch agents compete in live simulated trading battles
-- **On-Chain Betting**: Place bets on match outcomes with fully transparent settlement
-- **Token Economy**: CLAW token for betting, rewards, and agent creation
-- **Leaderboard System**: Track top-performing agents and traders
-- **Agent Tokenization**: Launch ERC-20 tokens for your agents on nad.fun
+- Autonomous Trading Agents: Create AI agents with customizable DNA parameters that influence trading behavior
+- Real-Time Market Analysis: Agents analyze live market data from CoinGecko and crypto news feeds
+- AI-Powered Decisions: Google Gemini processes market conditions through agent DNA to generate BUY/SELL/HOLD decisions
+- USDC Economy: Testnet USDC faucet provides 1000 USDC per hour for agent funding
+- Agent Vault System: Agents maintain USDC balances for trading and profit distribution
+- Performance Tracking: Real-time P&L, win rate, and trade history for each agent
+- Spectator Betting: Users can bet on agent match outcomes with on-chain settlement
+- Token Launch Integration: Agents can launch ERC-20 tokens on nad.fun bonding curve
 
 ---
 
-## Use Cases
-
-### For Traders
-- Test trading strategies without financial risk through AI agents
-- Learn market dynamics by observing agent decision-making patterns
-- Compete for leaderboard rankings and token rewards
-
-### For Spectators
-- Watch real-time AI trading battles with live commentary
-- Place bets on predicted match outcomes
-- Participate in the platform economy without technical expertise
-
-### For Developers
-- Study AI decision-making in adversarial trading environments
-- Build on top of the open smart contract architecture
-- Extend agent capabilities through the modular DNA system
-
-### For Researchers
-- Analyze emergent behaviors in multi-agent trading systems
-- Collect data on AI performance under various market conditions
-- Test game-theoretic models in a controlled environment
-
----
-
-## Architecture
+## System Architecture
 
 ```
-+------------------+     +------------------+     +------------------+
-|                  |     |                  |     |                  |
-|   React Client   |---->|   Supabase       |---->|   Monad Chain    |
-|   (Frontend)     |     |   (Backend)      |     |   (Settlement)   |
-|                  |     |                  |     |                  |
-+------------------+     +------------------+     +------------------+
-        |                        |                        |
-        v                        v                        v
-+------------------+     +------------------+     +------------------+
-|  RainbowKit      |     |  Edge Functions  |     |  ClawToken.sol   |
-|  Wallet Connect  |     |  - AI Decisions  |     |  ClawArena.sol   |
-|                  |     |  - Simulations   |     |                  |
-+------------------+     +------------------+     +------------------+
++-------------------+     +-------------------+     +-------------------+
+|                   |     |                   |     |                   |
+|   React Client    |---->|   Lovable Cloud   |---->|   Monad Chain     |
+|   (Frontend)      |     |   (Backend)       |     |   (Settlement)    |
+|                   |     |                   |     |                   |
++-------------------+     +-------------------+     +-------------------+
+        |                         |                         |
+        v                         v                         v
++-------------------+     +-------------------+     +-------------------+
+|  Wagmi + Viem     |     |  Edge Functions   |     |  AgentWallet.sol  |
+|  Wallet Connect   |     |  - AI Analysis    |     |  ClawToken.sol    |
+|  (RainbowKit)     |     |  - Trade Execute  |     |  ClawArena.sol    |
++-------------------+     +-------------------+     +-------------------+
+        |                         |
+        v                         v
++-------------------+     +-------------------+
+|  TradingView      |     |  Google Gemini    |
+|  Market Charts    |     |  AI Gateway       |
++-------------------+     +-------------------+
 ```
 
-### Component Breakdown
+### Data Flow
 
-**Frontend Layer**
-- React with TypeScript for type-safe UI components
-- TailwindCSS with custom design tokens for consistent styling
-- RainbowKit for wallet connection (MetaMask, Brave, Rainbow)
-- Wagmi for Ethereum interactions and contract calls
-
-**Backend Layer**
-- Supabase for database, authentication, and real-time subscriptions
-- Edge Functions for serverless compute (AI decisions, match simulation)
-- PostgreSQL with Row Level Security for data protection
-
-**Blockchain Layer**
-- Monad Testnet for high-performance transaction settlement
-- ClawToken (ERC-20) for platform economy
-- ClawArena for match escrow and bet settlement
+1. User creates agent with DNA parameters stored in database
+2. User funds agent with USDC (virtual balance or on-chain via AgentWallet)
+3. Agent triggers analysis on 30-second intervals during autonomous trading
+4. Edge function fetches market data from CoinGecko API
+5. Gemini AI processes data through agent DNA to generate trading decision
+6. Trade is executed and P&L calculated
+7. Agent balance and statistics updated in real-time
 
 ---
 
@@ -106,17 +80,18 @@ The platform operates on Monad Testnet, leveraging its high throughput and low l
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| Frontend | React 18 | UI framework |
-| Styling | TailwindCSS | Utility-first CSS |
-| Components | shadcn/ui | Accessible component library |
-| Wallet | RainbowKit | Web3 wallet connection |
-| Blockchain | Wagmi + Viem | Ethereum client |
-| Backend | Supabase | Database and serverless functions |
+| Frontend | React 18 + TypeScript | Type-safe UI framework |
+| Styling | TailwindCSS + shadcn/ui | Apple-inspired design system |
+| Wallet | Wagmi + RainbowKit | Web3 wallet connection |
+| Blockchain | Viem | Ethereum client |
+| Backend | Lovable Cloud (Supabase) | Database and serverless functions |
 | AI | Google Gemini | Agent decision making |
+| Market Data | CoinGecko API | Real-time cryptocurrency prices |
+| News | NewsData.io API | Crypto news headlines |
+| Charts | TradingView Widget | Professional trading charts |
 | Chain | Monad Testnet | Transaction settlement |
-| Smart Contracts | Solidity | On-chain logic |
+| Smart Contracts | Solidity | On-chain trade execution |
 | Build | Vite | Development and bundling |
-| Language | TypeScript | Type safety |
 
 ---
 
@@ -126,73 +101,99 @@ The platform operates on Monad Testnet, leveraging its high throughput and low l
 
 Users connect their wallet and create a trading agent with customized DNA traits:
 
-- **Aggression** (0-100): How quickly the agent enters/exits positions
-- **Risk Tolerance** (0-100): Maximum position size relative to portfolio
-- **Pattern Recognition** (0-100): Ability to detect market patterns
-- **Contrarian Bias** (0-100): Tendency to trade against market sentiment
-- **Timing Sensitivity** (0-100): Reaction speed to market changes
+- Aggression (0-100): How quickly the agent enters/exits positions
+- Risk Tolerance (0-100): Maximum position size relative to portfolio
+- Pattern Recognition (0-100): Ability to detect market patterns
+- Contrarian Bias (0-100): Tendency to trade against market sentiment
+- Timing Sensitivity (0-100): Reaction speed to market changes
 
-### Step 2: Enter the Arena
+### Step 2: Fund the Agent
 
-Agents are matched against opponents based on ELO rating. Each match:
+Users claim testnet USDC from the faucet (1000 USDC per hour) and deposit into their agent's trading balance. This balance is tracked in the database and can be upgraded to on-chain via the AgentWallet smart contract.
 
-1. Both agents stake CLAW tokens as wager
-2. A market scenario is generated with price data and events
-3. Agents make trading decisions each round via AI
-4. Performance is measured by profit/loss percentage
+### Step 3: Autonomous Trading
 
-### Step 3: AI Decision Making
+When the user enables "Auto Trade":
 
-Each round, the AI evaluates:
-- Current market state (price, volume, volatility)
-- Agent DNA traits and personality
-- Historical performance patterns
-- Opponent behavior analysis
+1. Every 30 seconds, the system fetches live market data
+2. Gemini AI analyzes the data through the agent's DNA parameters
+3. AI returns a decision (BUY/SELL/HOLD) with confidence score
+4. If confidence exceeds threshold, trade is executed
+5. P&L is calculated and agent balance updated
 
-Decisions include: BUY, SELL, HOLD, or propose ALLIANCE.
+### Step 4: AI Decision Making
 
-### Step 4: Match Settlement
+Each cycle, the AI evaluates:
+- Current market state (price, volume, 24h change)
+- Technical indicators (RSI, MACD, moving averages)
+- Agent DNA traits and personality type
+- Portfolio balance and risk parameters
 
-When the match concludes:
-1. Final PnL is calculated for both agents
-2. Winner is determined by higher PnL
-3. Smart contract distributes pot (minus platform fee)
-4. Agent stats and ELO are updated
-5. Spectator bets are settled
+Response includes:
+- Action: BUY, SELL, or HOLD
+- Confidence: 0-100% certainty
+- Reasoning: Technical analysis explanation
+- Risk Assessment: Trade risk evaluation
+- Suggested Amount: Percentage of portfolio to trade
 
-### Step 5: Evolution
+### Step 5: Profit Distribution
 
-Winning agents can evolve:
-- DNA mutations based on performance
-- Generation increments for lineage tracking
-- Token holders can vote on agent modifications
+Agents track cumulative P&L. Users can withdraw profits via the Withdraw modal. For on-chain execution, the AgentWallet contract handles fund custody and automated payouts.
 
 ---
 
-## Getting Started
+## Smart Contracts
+
+### Contracts to Deploy
+
+You must deploy these contracts to Monad Testnet for full on-chain functionality:
+
+| Contract | Purpose | Required |
+|----------|---------|----------|
+| AgentWallet.sol | Holds USDC for agents, executes trades, distributes profits | Yes |
+| ClawToken.sol | Platform ERC-20 token for betting | Optional |
+| ClawArena.sol | Match escrow and bet settlement | Optional |
+
+### AgentWallet.sol
+
+Primary contract for autonomous trading. Holds funds and allows authorized operator (backend) to execute trades.
+
+Key Functions:
+- `fundAgent(bytes32 agentId)`: Deposit funds to an agent
+- `withdrawFromAgent(bytes32 agentId, uint256 amount)`: Owner withdraws funds
+- `executeBuy(...)`: Operator executes buy trade for agent
+- `executeSell(...)`: Operator executes sell trade for agent
+- `getAgentBalance(bytes32 agentId)`: View agent balance
+
+### ClawToken.sol
+
+ERC-20 token with built-in faucet for testnet.
+
+Key Functions:
+- `faucet()`: Claim 1000 CLAW tokens (1 hour cooldown)
+- Standard ERC-20 functions (transfer, approve, etc.)
+
+### ClawArena.sol
+
+Match and betting management.
+
+Key Functions:
+- `createMatch(agent1, agent2, wager)`: Initialize match
+- `placeBet(matchId, winner, amount)`: Place bet on outcome
+- `settleMatch(matchId, winner)`: Oracle settlement
+- `claimWinnings(matchId)`: Withdraw winnings
+
+---
+
+## Deployment Guide
 
 ### Prerequisites
 
 - Node.js 18 or higher
-- npm or bun package manager
 - MetaMask or compatible Web3 wallet
-- Monad Testnet configured in wallet
+- Monad Testnet MON for gas fees
 
-### Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd clawtrader
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-### Wallet Configuration
+### Step 1: Configure Wallet
 
 Add Monad Testnet to your wallet:
 
@@ -204,135 +205,61 @@ Add Monad Testnet to your wallet:
 | Currency Symbol | MON |
 | Block Explorer | https://testnet.monadexplorer.com |
 
-### Getting Testnet Tokens
+### Step 2: Get Testnet MON
 
-1. Connect your wallet to the application
-2. Navigate to the Faucet section
-3. Request testnet MON for gas fees
-4. Request testnet CLAW for arena participation
+Use the Monad faucet to get testnet MON for gas fees.
 
----
+### Step 3: Deploy Contracts via Remix IDE
 
-## Smart Contracts
+1. Open Remix IDE (https://remix.ethereum.org)
+2. Create new files and paste contract code:
+   - `AgentWallet.sol`
+   - `ClawToken.sol` (optional)
+   - `ClawArena.sol` (optional)
+3. Install OpenZeppelin contracts:
+   - In Remix, click on the file icon
+   - Import @openzeppelin/contracts as needed
+4. Compile each contract (Solidity 0.8.20)
+5. Connect MetaMask to Monad Testnet
+6. Deploy each contract
+7. Save deployed contract addresses
 
-### ClawToken.sol
+### Step 4: Update Configuration
 
-ERC-20 token with built-in faucet functionality.
+After deploying, update `src/lib/usdc-config.ts`:
 
-| Function | Description |
-|----------|-------------|
-| `faucet()` | Claim 1,000 CLAW tokens (1 hour cooldown) |
-| `transfer(to, amount)` | Standard ERC-20 transfer |
-| `approve(spender, amount)` | Approve spending allowance |
-
-### ClawArena.sol
-
-Match management and betting escrow.
-
-| Function | Description |
-|----------|-------------|
-| `createMatch(agent1, agent2, wager)` | Initialize a new match |
-| `joinMatch(matchId)` | Join an existing match |
-| `placeBet(matchId, winner, amount)` | Place bet on match outcome |
-| `settleMatch(matchId, winner)` | Oracle-only settlement |
-| `claimWinnings(matchId)` | Withdraw bet winnings |
-
-### Deployment
-
-```bash
-cd contracts
-npm install
-npx hardhat compile
-PRIVATE_KEY=your_key npx hardhat run scripts/deploy.js --network monad
+```typescript
+export const USDC_CONFIG = {
+  contractAddress: '0xYOUR_DEPLOYED_USDC_ADDRESS' as `0x${string}`,
+  decimals: 6,
+  symbol: 'USDC',
+};
 ```
 
+For AgentWallet, create `src/lib/agent-wallet-config.ts`:
+
+```typescript
+export const AGENT_WALLET_CONFIG = {
+  contractAddress: '0xYOUR_DEPLOYED_AGENT_WALLET' as `0x${string}`,
+};
+```
+
+### Step 5: Set Operator
+
+Call `setOperator(backendWalletAddress)` on AgentWallet to authorize the backend wallet for trade execution.
+
 ---
 
-## Environment Variables
+## Environment Configuration
 
-The following environment variables are configured automatically:
+Environment variables are managed automatically by Lovable Cloud:
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon key |
+| VITE_SUPABASE_URL | Backend API URL |
+| VITE_SUPABASE_PUBLISHABLE_KEY | Backend public key |
 
-For smart contract deployment:
-
-| Variable | Description |
-|----------|-------------|
-| `PRIVATE_KEY` | Deployer wallet private key |
-
----
-
-## Deployment
-
-### Frontend (Netlify)
-
-The application is configured for Netlify deployment with the included `netlify.toml`.
-
-```bash
-# Build for production
-npm run build
-
-# Deploy to Netlify
-netlify deploy --prod
-```
-
-### Backend (Supabase)
-
-Edge functions are automatically deployed when changes are pushed to the repository.
-
-### Smart Contracts (Monad)
-
-See the [Smart Contracts](#smart-contracts) section for deployment instructions.
-
----
-
-## Project Structure
-
-```
-clawtrader/
-├── contracts/              # Solidity smart contracts
-│   ├── ClawToken.sol       # ERC-20 token contract
-│   ├── ClawArena.sol       # Match and betting contract
-│   └── scripts/            # Deployment scripts
-├── src/
-│   ├── components/         # React UI components
-│   │   ├── arena/          # Match display components
-│   │   ├── agents/         # Agent management
-│   │   ├── faucet/         # Token faucet UI
-│   │   ├── layout/         # Page layout
-│   │   ├── providers/      # Context providers
-│   │   └── ui/             # shadcn components
-│   ├── hooks/              # Custom React hooks
-│   ├── lib/                # Utilities and API
-│   ├── pages/              # Route pages
-│   └── integrations/       # External service clients
-├── supabase/
-│   └── functions/          # Edge functions
-├── public/                 # Static assets
-└── netlify.toml            # Deployment configuration
-```
-
----
-
-## Contributing
-
-Contributions are welcome. Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/improvement`)
-3. Commit changes with clear messages
-4. Push to your branch
-5. Open a pull request with description
-
-### Code Standards
-
-- Use TypeScript for all new code
-- Follow existing component patterns
-- Include error handling for async operations
-- Write descriptive commit messages
+For local development, these are provided in the `.env` file.
 
 ---
 
@@ -342,44 +269,55 @@ ClawTrader is built for the Moltiverse Building Event (February 2-18, 2026) in t
 
 ### Core Thesis
 
-Autonomous agents need money rails and the ability to transact at scale. Monad provides the high-performance blockchain infrastructure, and nad.fun enables community building and monetization around agents.
+Autonomous agents need money rails and the ability to transact at scale. Monad provides high-performance blockchain infrastructure, and nad.fun enables community building and monetization around agents.
 
-### What ClawTrader Delivers
-
-1. **Autonomous Agents on Monad**: AI trading agents that make independent decisions, compete in simulated markets, and evolve based on performance. Each agent has unique DNA parameters that influence trading behavior.
-
-2. **Token Launch on nad.fun**: Every agent can launch its own ERC-20 token through the nad.fun bonding curve infrastructure. This creates a direct link between agent performance and token value.
-
-3. **Community Speculation**: Token holders can speculate on an agent's future success. Strong performance in the arena drives token demand and market cap growth.
-
-4. **Creative Token Utility**: Agent tokens support multiple use cases:
-   - **Revenue Share**: Token holders receive a percentage of agent arena winnings
-   - **Governance**: DAO-style voting on agent strategy modifications
-   - **Access Rights**: Token gating for premium features and exclusive competitions
-   - **Evolution Rights**: Holders influence mutation decisions
-
-### Competition Requirements Met
+### Requirements Met
 
 | Requirement | Implementation |
 |-------------|----------------|
-| Agent does cool stuff | Trading agents compete autonomously using AI decision-making |
+| Agent does cool stuff | AI agents analyze markets and trade autonomously using Gemini AI |
 | Token launched on nad.fun | Full integration with nad.fun bonding curve and token launch flow |
 | Community can speculate | Public token trading with real-time market cap tracking |
-| Creative token utility | Revenue share, governance, access control, evolution voting |
+| Creative token utility | Revenue share, governance voting, access control, evolution rights |
 
 ### Technical Implementation
 
-- **Agent Logic**: Supabase Edge Functions with Google Gemini AI
-- **Token Launch**: nad.fun SDK integration with image upload and vanity address mining
-- **On-Chain Settlement**: Solidity smart contracts for match escrow and betting
-- **Real-Time Updates**: Supabase Realtime for live match subscriptions
+- Agent Logic: Lovable Cloud Edge Functions with Google Gemini AI
+- Token Launch: nad.fun SDK with vanity address mining
+- On-Chain Settlement: Solidity smart contracts for trade execution
+- Real-Time Updates: Database realtime subscriptions for live updates
 
-### Resources
+---
 
-- Moltiverse Event: https://moltiverse.dev/
-- Agent Track Details: https://moltiverse.dev/agents.md
-- nad.fun Platform: https://nad.fun
-- Monad Documentation: https://docs.monad.xyz
+## Project Structure
+
+```
+clawtrader/
+├── contracts/                    # Solidity smart contracts
+│   ├── AgentWallet.sol           # Agent fund custody and trading
+│   ├── ClawToken.sol             # Platform ERC-20 token
+│   ├── ClawArena.sol             # Match and betting contract
+│   └── scripts/                  # Deployment scripts
+├── src/
+│   ├── components/               # React UI components
+│   │   ├── arena/                # Match display components
+│   │   ├── agents/               # Agent management
+│   │   ├── faucet/               # Token faucet UI
+│   │   ├── trading/              # Trading dashboard
+│   │   ├── layout/               # Page layout
+│   │   ├── providers/            # Context providers
+│   │   └── ui/                   # shadcn components
+│   ├── hooks/                    # Custom React hooks
+│   ├── lib/                      # Utilities and API clients
+│   ├── pages/                    # Route pages
+│   └── integrations/             # Backend client
+├── supabase/
+│   └── functions/                # Edge functions
+│       ├── ai-trading-analysis/  # Gemini AI trading decisions
+│       ├── execute-agent-trade/  # Autonomous trade execution
+│       └── claim-usdc-faucet/    # USDC faucet claims
+└── public/                       # Static assets
+```
 
 ---
 
@@ -391,9 +329,6 @@ This project is open source under the MIT License.
 
 ## Links
 
-- Documentation: [Project Wiki]
-- Discord: [Community Server]
-- Twitter: [@ClawTrader]
 - Monad: https://monad.xyz
 - Testnet Explorer: https://testnet.monadexplorer.com
 - nad.fun: https://nad.fun
