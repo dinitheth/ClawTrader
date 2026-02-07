@@ -6,17 +6,19 @@ import { FundAgentModal } from '@/components/trading/FundAgentModal';
 import { AgentPortfolio } from '@/components/trading/AgentPortfolio';
 import { ExecuteTradeModal } from '@/components/trading/ExecuteTradeModal';
 import { LatestDecisionCard } from '@/components/trading/LatestDecisionCard';
+import { CryptoNewsCard } from '@/components/trading/CryptoNewsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { Bot, Brain, TrendingUp, TrendingDown, Loader2, Zap, Clock, Activity, Wallet, Play, Square, AlertCircle, ExternalLink, DollarSign } from 'lucide-react';
+import { useAccount, useReadContract } from 'wagmi';
 import { agentService } from '@/lib/api';
-import { getAITradingAnalysis, fetchMarketData, getCoinGeckoId, type TradingDecision, type AgentDNA, SYMBOL_TO_COINGECKO } from '@/lib/trading-service';
+import { getAITradingAnalysis, fetchMarketData, getCoinGeckoId, type TradingDecision, type AgentDNA } from '@/lib/trading-service';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { supabase } from '@/integrations/supabase/client';
+import { USDC_CONFIG, ERC20_ABI, formatUSDC } from '@/lib/usdc-config';
 
 interface Trade {
   id: string;
@@ -53,6 +55,17 @@ const Trading = () => {
     decision: TradingDecision;
     agentName: string;
   }>>([]);
+
+  // Read wallet USDC balance
+  const { data: walletUSDCBalance } = useReadContract({
+    address: USDC_CONFIG.contractAddress,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && USDC_CONFIG.contractAddress !== '0x0000000000000000000000000000000000000000',
+    },
+  });
 
   useEffect(() => {
     loadAgents();
@@ -200,10 +213,10 @@ const Trading = () => {
             setTrades(prev => [newTrade, ...prev]);
 
             // Show notification
-            const pnlText = trade.pnl >= 0 ? `+${trade.pnl.toFixed(4)}` : trade.pnl.toFixed(4);
+            const pnlText = trade.pnl >= 0 ? `+${trade.pnl.toFixed(2)}` : trade.pnl.toFixed(2);
             toast({
               title: `${tradeDecision.action} Executed!`,
-              description: `${selectedAgent.avatar} ${selectedAgent.name}: ${pnlText} MON (${tradeDecision.confidence}% confidence)`,
+              description: `${selectedAgent.avatar} ${selectedAgent.name}: ${pnlText} USDC (${tradeDecision.confidence}% confidence)`,
             });
           }
 
@@ -245,7 +258,7 @@ const Trading = () => {
         action: decision.action as 'BUY' | 'SELL',
         symbol: symbol.split(':')[1],
         amount: tradeAmount,
-        price: 0, // Would need to fetch actual price
+        price: 0,
         timestamp: new Date().toISOString(),
         txHash,
       };
@@ -253,7 +266,7 @@ const Trading = () => {
       
       toast({
         title: 'Trade Executed On-Chain!',
-        description: `${selectedAgent?.avatar} ${selectedAgent?.name} ${decision.action === 'BUY' ? 'bought' : 'sold'} ${tradeAmount.toFixed(4)} MON`,
+        description: `${selectedAgent?.avatar} ${selectedAgent?.name} ${decision.action === 'BUY' ? 'bought' : 'sold'} ${tradeAmount.toFixed(2)} USDC`,
       });
     }
   };
@@ -262,7 +275,7 @@ const Trading = () => {
     if (!isAutoTrading && agentBalance <= 0) {
       toast({ 
         title: 'Fund Your Agent First', 
-        description: 'Add MON to your agent\'s balance before starting autonomous trading',
+        description: 'Add USDC to your agent\'s balance before starting autonomous trading',
         variant: 'destructive' 
       });
       setShowFundModal(true);
@@ -277,21 +290,10 @@ const Trading = () => {
     }
   };
 
-  const getActionColor = (action: string) => {
-    switch (action) {
-      case 'BUY': return 'bg-accent/20 text-accent border-accent/50';
-      case 'SELL': return 'bg-destructive/20 text-destructive border-destructive/50';
-      default: return 'bg-muted text-muted-foreground border-border';
-    }
-  };
-
-  const getActionIcon = (action: string) => {
-    switch (action) {
-      case 'BUY': return <TrendingUp className="w-5 h-5" />;
-      case 'SELL': return <TrendingDown className="w-5 h-5" />;
-      default: return <Clock className="w-5 h-5" />;
-    }
-  };
+  // Format wallet balance
+  const formattedWalletBalance = walletUSDCBalance 
+    ? formatUSDC(walletUSDCBalance as bigint)
+    : '0.00';
 
   return (
     <Layout>
@@ -304,7 +306,7 @@ const Trading = () => {
               <h1 className="text-3xl md:text-4xl font-display font-bold">AUTONOMOUS TRADING</h1>
             </div>
             <p className="text-muted-foreground">
-              Fund your agent with testnet MON and let AI trade autonomously
+              Fund your agent with USDC and let AI trade autonomously
             </p>
           </div>
 
@@ -315,7 +317,7 @@ const Trading = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Chart + Latest AI Decision */}
+          {/* Left Column: Chart + Latest AI Decision + News */}
           <div className="lg:col-span-2 space-y-6">
             {/* Chart */}
             <Card className="overflow-hidden">
@@ -336,10 +338,31 @@ const Trading = () => {
               agentName={selectedAgent?.name}
               timestamp={analysisHistory[0]?.timestamp}
             />
+
+            {/* Crypto News Headlines - Below Decision */}
+            <CryptoNewsCard />
           </div>
 
-          {/* AI Analysis Panel */}
+          {/* Right Panel */}
           <div className="space-y-6">
+            {/* Wallet USDC Balance */}
+            {isConnected && (
+              <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-primary" />
+                      <span className="text-sm text-muted-foreground">Wallet USDC</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-mono font-bold">{formattedWalletBalance}</p>
+                      <p className="text-xs text-muted-foreground">USDC</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Agent Selector */}
             <Card>
               <CardHeader className="pb-3">
@@ -421,7 +444,7 @@ const Trading = () => {
                     className="w-full gap-2"
                   >
                     <Wallet className="w-4 h-4" />
-                    Fund Agent ({agentBalance.toFixed(2)} MON)
+                    Fund Agent
                   </Button>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -495,7 +518,7 @@ const Trading = () => {
                 }`}
               >
                 <Zap className="w-4 h-4" />
-                Execute {decision.action} on Monad DEX
+                Execute {decision.action} on DEX
                 <ExternalLink className="w-3 h-3" />
               </Button>
             )}
@@ -509,7 +532,7 @@ const Trading = () => {
                     <div>
                       <p className="font-medium text-warning">Fund Your Agent</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Add testnet MON to your agent's balance to enable autonomous trading. The agent will analyze real market data and make virtual trades.
+                        Add USDC to your agent's balance to enable autonomous trading. The agent will analyze real market data and execute trades.
                       </p>
                       <Button 
                         onClick={() => setShowFundModal(true)} 
