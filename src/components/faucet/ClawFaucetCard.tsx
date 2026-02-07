@@ -1,40 +1,45 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { formatEther } from "viem";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Clock, CheckCircle, Loader2, Wallet, Droplets } from "lucide-react";
+import { Coins, Clock, Loader2, Wallet, Droplets, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { monadTestnet } from "@/lib/wagmi";
+import { parseError, formatErrorForDisplay, ErrorCode, createError } from "@/lib/errors";
 
-// Will be updated after deployment - set to empty string when not deployed
 const CLAW_TOKEN_ADDRESS = "" as const;
-const FAUCET_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+const FAUCET_COOLDOWN_MS = 60 * 60 * 1000;
 
 export function ClawFaucetCard() {
   const { address, isConnected } = useAccount();
   const [countdown, setCountdown] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [lastClaimTime, setLastClaimTime] = useState<number | null>(null);
 
-  // Get native balance for display when contract not deployed
-  const { data: nativeBalance } = useBalance({
+  const { data: nativeBalance, isError: balanceError } = useBalance({
     address,
     chainId: monadTestnet.id,
   });
 
-  // Check local storage for last claim time
   useEffect(() => {
     if (address) {
-      const stored = localStorage.getItem(`claw-faucet-${address}`);
-      if (stored) {
-        setLastClaimTime(parseInt(stored, 10));
+      try {
+        const stored = localStorage.getItem(`claw-faucet-${address}`);
+        if (stored) {
+          const parsed = parseInt(stored, 10);
+          if (!isNaN(parsed)) {
+            setLastClaimTime(parsed);
+          }
+        }
+      } catch {
+        // localStorage not available
       }
     }
   }, [address]);
 
-  // Update countdown
   useEffect(() => {
     if (!lastClaimTime) {
       setCountdown(0);
@@ -55,53 +60,53 @@ export function ClawFaucetCard() {
   const canClaim = countdown === 0;
   const isContractDeployed = CLAW_TOKEN_ADDRESS.length > 0;
 
-  const handleClaim = async () => {
+  const handleClaim = useCallback(async () => {
+    setError(null);
+
     if (!isContractDeployed) {
-      toast({
-        title: "Contract Not Deployed",
-        description: "Deploy ClawToken.sol first, then update CLAW_TOKEN_ADDRESS.",
-        variant: "destructive",
-      });
+      const appError = createError(ErrorCode.CONTRACT_ERROR, "Contract not deployed yet");
+      const { description } = formatErrorForDisplay(appError);
+      setError(description);
+      toast({ title: "Contract Not Deployed", description, variant: "destructive" });
       return;
     }
 
     if (!canClaim) {
-      toast({
-        title: "Cooldown Active",
-        description: "Please wait for the cooldown to complete.",
-        variant: "destructive",
-      });
+      const appError = createError(ErrorCode.FAUCET_COOLDOWN);
+      const { description } = formatErrorForDisplay(appError);
+      toast({ title: "Cooldown Active", description, variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // TODO: Implement actual contract call when deployed
-      // For now, simulate for UI testing
+      // Contract call would go here
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Record claim time
       const now = Date.now();
       setLastClaimTime(now);
       if (address) {
-        localStorage.setItem(`claw-faucet-${address}`, now.toString());
+        try {
+          localStorage.setItem(`claw-faucet-${address}`, now.toString());
+        } catch {
+          // localStorage not available
+        }
       }
 
       toast({
-        title: "🎉 CLAW Tokens Claimed!",
+        title: "CLAW Tokens Claimed",
         description: "1,000 CLAW tokens have been added to your wallet.",
       });
-    } catch (error) {
-      toast({
-        title: "Claim Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
+    } catch (err) {
+      const appError = parseError(err);
+      const { title, description } = formatErrorForDisplay(appError);
+      setError(description);
+      toast({ title, description, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [address, canClaim, isContractDeployed]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -110,46 +115,58 @@ export function ClawFaucetCard() {
   };
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-card to-card/80">
-      <CardHeader className="pb-3">
+    <Card>
+      <CardHeader className="pb-3 px-4 md:px-6">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Droplets className="h-5 w-5 text-primary" />
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Droplets className="h-4 w-4 md:h-5 md:w-5 text-primary" />
             CLAW Faucet
           </CardTitle>
-          <Badge variant="outline" className="border-primary/40">
+          <Badge variant="outline" className="text-[10px] md:text-xs">
             Testnet
           </Badge>
         </div>
-        <CardDescription>
-          Claim 1,000 CLAW tokens every hour for testing
+        <CardDescription className="text-xs md:text-sm">
+          Claim 1,000 CLAW tokens every hour
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 md:space-y-4 px-4 md:px-6 pb-4 md:pb-6">
         {!isConnected ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <Wallet className="h-12 w-12 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
+            <Wallet className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
+            <p className="text-xs md:text-sm text-muted-foreground">
               Connect your wallet to claim tokens
             </p>
           </div>
         ) : (
           <>
             {/* Balance Display */}
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
+            <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3 md:p-4">
               <div className="flex items-center gap-2">
-                <Coins className="h-5 w-5 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  {isContractDeployed ? "CLAW Balance" : "MON Balance"}
+                <Coins className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                <span className="text-xs md:text-sm text-muted-foreground">
+                  {isContractDeployed ? "CLAW" : "MON"} Balance
                 </span>
               </div>
-              <span className="font-mono text-lg font-semibold">
-                {nativeBalance
-                  ? `${parseFloat(formatEther(nativeBalance.value)).toFixed(4)} ${nativeBalance.symbol}`
-                  : "0"}
+              <span className="font-mono text-sm md:text-base font-medium">
+                {balanceError ? (
+                  <span className="text-muted-foreground">--</span>
+                ) : nativeBalance ? (
+                  `${parseFloat(formatEther(nativeBalance.value)).toFixed(4)}`
+                ) : (
+                  "0"
+                )}
               </span>
             </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-destructive">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <p className="text-xs">{error}</p>
+              </div>
+            )}
 
             {/* Claim Button or Countdown */}
             {canClaim ? (
@@ -177,19 +194,18 @@ export function ClawFaucetCard() {
                   <Clock className="h-4 w-4" />
                   Next claim in {formatTime(countdown)}
                 </Button>
-                <p className="text-center text-xs text-muted-foreground">
-                  You can claim again once the cooldown expires
+                <p className="text-center text-[10px] md:text-xs text-muted-foreground">
+                  Cooldown expires in {formatTime(countdown)}
                 </p>
               </div>
             )}
           </>
         )}
 
-        {/* Contract Not Deployed Warning */}
-        {!isContractDeployed && (
+        {!isContractDeployed && isConnected && (
           <div className="rounded-lg border border-muted bg-muted/30 p-3">
-            <p className="text-center text-xs text-muted-foreground">
-              ⚠️ Contract not deployed yet. Deploy ClawToken.sol first.
+            <p className="text-center text-[10px] md:text-xs text-muted-foreground">
+              Contract not deployed. Deploy ClawToken.sol first.
             </p>
           </div>
         )}

@@ -54,6 +54,7 @@ export const NAD_CONTRACTS = {
   LENS: '0xB056d79CA5257589692699a46623F901a3BB76f1',
 } as const;
 
+// RainbowKit configuration - only allow specific wallets (no WalletConnect, no Base)
 export const config = getDefaultConfig({
   appName: 'ClawTrader',
   projectId: 'clawtrader-monad-arena',
@@ -96,9 +97,16 @@ export const CLAW_TOKEN_ABI = [
     ],
     outputs: [{ name: '', type: 'bool' }],
   },
+  {
+    name: 'faucet',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [],
+    outputs: [],
+  },
 ] as const;
 
-// Arena Escrow Contract (placeholder)
+// Arena Escrow Contract (placeholder - update after deployment)
 export const ARENA_ESCROW_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
 export const ARENA_ESCROW_ABI = [

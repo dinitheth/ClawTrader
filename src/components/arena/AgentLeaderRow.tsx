@@ -25,65 +25,78 @@ const AgentLeaderRow = ({
   const getRankStyle = () => {
     switch (rank) {
       case 1:
-        return 'bg-gradient-to-r from-amber-500/20 to-amber-600/10 border-amber-500/50';
+        return 'bg-primary/5 border-primary/20';
       case 2:
-        return 'bg-gradient-to-r from-slate-400/20 to-slate-500/10 border-slate-400/50';
+        return 'bg-muted/50 border-muted-foreground/20';
       case 3:
-        return 'bg-gradient-to-r from-orange-700/20 to-orange-800/10 border-orange-700/50';
+        return 'bg-secondary/5 border-secondary/20';
       default:
-        return 'bg-card border-border';
+        return 'bg-transparent border-transparent';
     }
   };
 
   const getRankBadge = () => {
     switch (rank) {
       case 1:
-        return '🥇';
+        return '1';
       case 2:
-        return '🥈';
+        return '2';
       case 3:
-        return '🥉';
+        return '3';
       default:
-        return `#${rank}`;
+        return `${rank}`;
+    }
+  };
+
+  const getRankColor = () => {
+    switch (rank) {
+      case 1:
+        return 'text-primary';
+      case 2:
+        return 'text-muted-foreground';
+      case 3:
+        return 'text-secondary';
+      default:
+        return 'text-muted-foreground';
     }
   };
 
   return (
-    <div className={`flex items-center gap-4 p-3 rounded-lg border transition-all hover:bg-muted/30 ${getRankStyle()}`}>
+    <div className={`flex items-center gap-2 md:gap-4 p-2 md:p-3 rounded-lg border transition-colors hover:bg-muted/30 ${getRankStyle()}`}>
       {/* Rank */}
-      <div className="w-10 text-center">
-        <span className={`font-display font-bold ${rank <= 3 ? 'text-lg' : 'text-sm text-muted-foreground'}`}>
+      <div className="w-6 md:w-8 text-center flex-shrink-0">
+        <span className={`font-semibold text-sm md:text-base ${getRankColor()}`}>
           {getRankBadge()}
         </span>
       </div>
 
       {/* Agent Info */}
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="relative">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-xl border border-primary/20">
+      <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+        <div className="relative flex-shrink-0">
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-muted flex items-center justify-center text-base md:text-xl border border-border">
             {avatar}
           </div>
-          <Badge className="absolute -bottom-1 -right-1 text-[8px] px-1 py-0 bg-muted text-muted-foreground border-border">
+          <Badge className="absolute -bottom-1 -right-1 text-[7px] md:text-[8px] px-0.5 md:px-1 py-0 bg-muted text-muted-foreground border-border">
             G{generation}
           </Badge>
         </div>
         <div className="min-w-0">
-          <p className="font-display font-semibold text-sm truncate">{name}</p>
-          <p className="text-xs text-muted-foreground">{matches} matches</p>
+          <p className="font-medium text-xs md:text-sm truncate">{name}</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">{matches} matches</p>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="hidden sm:flex items-center gap-6">
+      {/* Stats - Desktop only */}
+      <div className="hidden sm:flex items-center gap-4 md:gap-6">
         <div className="text-center">
-          <p className="text-xs text-muted-foreground">Win Rate</p>
-          <p className="font-mono font-semibold text-sm">{winRate}%</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground">Win Rate</p>
+          <p className="font-mono font-medium text-xs md:text-sm">{winRate}%</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-muted-foreground">Recent P&L</p>
-          <div className={`flex items-center justify-center gap-1 ${recentPnL >= 0 ? 'text-success' : 'text-destructive'}`}>
+          <p className="text-[10px] md:text-xs text-muted-foreground">P&L</p>
+          <div className={`flex items-center justify-center gap-0.5 ${recentPnL >= 0 ? 'text-success' : 'text-destructive'}`}>
             {recentPnL >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            <span className="font-mono font-semibold text-sm">
+            <span className="font-mono font-medium text-xs md:text-sm">
               {recentPnL >= 0 ? '+' : ''}{recentPnL.toFixed(1)}%
             </span>
           </div>
@@ -91,10 +104,14 @@ const AgentLeaderRow = ({
       </div>
 
       {/* Total Winnings */}
-      <div className="text-right">
-        <p className="text-xs text-muted-foreground">Winnings</p>
-        <p className="font-display font-bold text-accent">
-          {totalWinnings.toLocaleString()} <span className="text-xs text-muted-foreground">$CLAW</span>
+      <div className="text-right flex-shrink-0">
+        <p className="text-[10px] md:text-xs text-muted-foreground hidden sm:block">Winnings</p>
+        <p className="font-medium text-xs md:text-sm text-secondary">
+          {totalWinnings >= 1000 
+            ? `${(totalWinnings / 1000).toFixed(1)}K` 
+            : totalWinnings.toLocaleString()
+          }
+          <span className="text-[10px] md:text-xs text-muted-foreground ml-1">CLAW</span>
         </p>
       </div>
     </div>
