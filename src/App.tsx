@@ -9,6 +9,8 @@ import Leaderboard from "./pages/Leaderboard";
 import Agents from "./pages/Agents";
 import Betting from "./pages/Betting";
 import Trading from "./pages/Trading";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -24,6 +26,8 @@ const App = () => (
             <Route path="/agents" element={<Agents />} />
             <Route path="/betting" element={<Betting />} />
             <Route path="/trading" element={<Trading />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

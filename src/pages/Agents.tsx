@@ -12,6 +12,7 @@ import { EvolveAgentModal } from "@/components/agents/EvolveAgentModal";
 import { agentService, profileService } from "@/lib/api";
 import { useAccount } from 'wagmi';
 import { useToast } from '@/hooks/use-toast';
+import { OnChainBalance } from '@/components/trading/OnChainBalance';
 
 const Agents = () => {
   const navigate = useNavigate();
@@ -44,10 +45,10 @@ const Agents = () => {
       setProfile(profileData);
     } catch (error) {
       console.error('Error loading/creating profile:', error);
-      toast({ 
-        title: 'Profile Error', 
+      toast({
+        title: 'Profile Error',
         description: 'Failed to load your profile. Please try again.',
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     }
   };
@@ -89,7 +90,7 @@ const Agents = () => {
               Create AI trading agents and launch tokens on nad.fun
             </p>
           </div>
-          <Button 
+          <Button
             onClick={() => {
               if (!isConnected) {
                 toast({ title: 'Connect Wallet', description: 'Please connect your wallet to create an agent', variant: 'destructive' });
@@ -120,7 +121,7 @@ const Agents = () => {
               <p className="text-muted-foreground max-w-sm mb-6">
                 Create your first AI trading agent to compete in the arena. Each agent has unique DNA and personality traits.
               </p>
-              <Button 
+              <Button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="gap-2 bg-gradient-to-r from-primary to-primary/80"
               >
@@ -130,115 +131,115 @@ const Agents = () => {
             </CardContent>
           </Card>
         ) : (
-          <section className="space-y-6">
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {agents.map((agent) => (
               <div key={agent.id} className="space-y-4">
                 <Card className="card-glow border-border overflow-hidden">
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2.5">
                         <div className="relative">
-                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-3xl border border-primary/30">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-xl border border-primary/30">
                             {agent.avatar}
                           </div>
-                          <Badge className="absolute -bottom-1 -right-1 text-[10px] px-1.5 py-0.5 bg-primary/20 text-primary border-primary/30">
-                            Gen {agent.generation}
+                          <Badge className="absolute -bottom-1 -right-1 text-[8px] px-1 py-0 bg-primary/20 text-primary border-primary/30">
+                            G{agent.generation}
                           </Badge>
                         </div>
                         <div>
-                          <h3 className="font-display font-semibold text-lg">{agent.name}</h3>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <Badge 
-                              variant="outline" 
-                              className={agent.is_in_match 
-                                ? 'bg-destructive/20 text-destructive border-destructive/50' 
+                          <h3 className="font-display font-semibold text-sm">{agent.name}</h3>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] px-1.5 py-0 ${agent.is_in_match
+                                ? 'bg-destructive/20 text-destructive border-destructive/50'
                                 : agent.is_active
-                                ? 'bg-accent/20 text-accent border-accent/50'
-                                : 'bg-muted text-muted-foreground border-border'
-                              }
+                                  ? 'bg-accent/20 text-accent border-accent/50'
+                                  : 'bg-muted text-muted-foreground border-border'
+                                }`}
                             >
                               {agent.is_in_match ? (
                                 <>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-destructive mr-1.5 animate-pulse" />
+                                  <span className="w-1 h-1 rounded-full bg-destructive mr-1 animate-pulse" />
                                   In Match
                                 </>
                               ) : agent.is_active ? 'Active' : 'Idle'}
                             </Badge>
-                            <Badge variant="outline" className="capitalize">
+                            <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0">
                               {agent.personality}
                             </Badge>
                             {agent.token_address && (
-                              <Badge variant="outline" className="bg-secondary/20 text-secondary border-secondary/50">
-                                <Coins className="w-3 h-3 mr-1" />
+                              <Badge variant="outline" className="bg-secondary/20 text-secondary border-secondary/50 text-[10px] px-1.5 py-0">
+                                <Coins className="w-2.5 h-2.5 mr-0.5" />
                                 ${agent.token_symbol}
                               </Badge>
                             )}
                           </div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon">
-                        <Settings className="w-4 h-4" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <Settings className="w-3.5 h-3.5" />
                       </Button>
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4 mb-4">
-                      <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
-                        <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Win Rate</p>
-                        <p className="font-display font-bold text-base md:text-lg">{getWinRate(agent)}%</p>
+                    <div className="grid grid-cols-3 gap-1.5 mb-2">
+                      <div className="text-center p-1.5 rounded-md bg-muted/30">
+                        <p className="text-[9px] text-muted-foreground">Win Rate</p>
+                        <p className="font-display font-bold text-sm">{getWinRate(agent)}%</p>
                       </div>
-                      <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
-                        <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Matches</p>
-                        <p className="font-display font-bold text-base md:text-lg">{agent.total_matches || 0}</p>
+                      <div className="text-center p-1.5 rounded-md bg-muted/30">
+                        <p className="text-[9px] text-muted-foreground">Matches</p>
+                        <p className="font-display font-bold text-sm">{agent.total_matches || 0}</p>
                       </div>
-                      <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
-                        <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Total P&L</p>
-                        <div className={`flex items-center justify-center gap-1 ${getRecentPnL(agent) >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                          {getRecentPnL(agent) >= 0 ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4" /> : <TrendingDown className="w-3 h-3 md:w-4 md:h-4" />}
-                          <span className="font-display font-bold text-base md:text-lg">
+                      <div className="text-center p-1.5 rounded-md bg-muted/30">
+                        <p className="text-[9px] text-muted-foreground">Total P&L</p>
+                        <div className={`flex items-center justify-center gap-0.5 ${getRecentPnL(agent) >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                          {getRecentPnL(agent) >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          <span className="font-display font-bold text-sm">
                             {getRecentPnL(agent) >= 0 ? '+' : ''}{getRecentPnL(agent).toFixed(1)}%
                           </span>
                         </div>
                       </div>
-                      {agent.token_address && (
-                        <>
-                          <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
-                            <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Market Cap</p>
-                            <p className="font-display font-bold text-base md:text-lg text-primary">
-                              ${Number(agent.token_market_cap || 0).toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
-                            <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Holders</p>
-                            <p className="font-display font-bold text-base md:text-lg">{agent.token_holders || 0}</p>
-                          </div>
-                          <div className="text-center p-2 md:p-3 rounded-lg bg-muted/30">
-                            <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Rev Share</p>
-                            <p className="font-display font-bold text-base md:text-lg text-secondary">
-                              {agent.revenue_share_enabled ? `${agent.revenue_share_percentage}%` : 'Off'}
-                            </p>
-                          </div>
-                        </>
-                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 mb-3">
+                      <div className="text-center p-1.5 rounded-md bg-muted/30">
+                        <p className="text-[9px] text-muted-foreground">Market Cap</p>
+                        <p className="font-display font-bold text-sm text-primary">
+                          {agent.token_address ? `$${Number(agent.token_market_cap || 0).toLocaleString()}` : '—'}
+                        </p>
+                      </div>
+                      <div className="text-center p-1.5 rounded-md bg-muted/30">
+                        <p className="text-[9px] text-muted-foreground">Holders</p>
+                        <p className="font-display font-bold text-sm">
+                          {agent.token_address ? (agent.token_holders || 0) : '—'}
+                        </p>
+                      </div>
+                      <div className="text-center p-1.5 rounded-md bg-muted/30">
+                        <p className="text-[9px] text-muted-foreground">Rev Share</p>
+                        <p className="font-display font-bold text-sm text-secondary">
+                          {agent.token_address ? (agent.revenue_share_enabled ? `${agent.revenue_share_percentage}%` : 'Off') : '—'}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Strategy DNA */}
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Dna className="w-4 h-4" />
+                    <div className="space-y-1.5 mb-3">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <Dna className="w-3 h-3" />
                         <span>Strategy DNA</span>
                         {agent.can_self_modify && (
-                          <Badge variant="outline" className="text-xs text-secondary border-secondary/50">
-                            Self-Modifying
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 text-secondary border-secondary/50">
+                            Self-Mod
                           </Badge>
                         )}
                         {agent.governance_enabled && (
-                          <Badge variant="outline" className="text-xs text-primary border-primary/50">
-                            DAO Governed
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 text-primary border-primary/50">
+                            DAO
                           </Badge>
                         )}
                       </div>
-                      <div className="grid grid-cols-5 gap-2">
+                      <div className="grid grid-cols-5 gap-1.5">
                         <DNABar label="Risk" value={Number(agent.dna_risk_tolerance) * 100} />
                         <DNABar label="Aggr" value={Number(agent.dna_aggression) * 100} />
                         <DNABar label="Pattern" value={Number(agent.dna_pattern_recognition) * 100} />
@@ -248,55 +249,55 @@ const Agents = () => {
                     </div>
 
                     {/* Balance & Actions */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 border-t border-border gap-3 sm:gap-4">
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div>
-                        <p className="text-[10px] md:text-xs text-muted-foreground">Balance</p>
-                        <p className="font-display font-bold text-accent text-base md:text-lg">
-                          {Number(agent.balance || 0).toLocaleString()} <span className="text-[10px] md:text-xs text-muted-foreground">USDC</span>
+                        <p className="text-[9px] text-muted-foreground">Balance</p>
+                        <p className="font-display font-bold text-accent text-sm">
+                          <OnChainBalance agentId={agent.id} />
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                      <div className="flex items-center gap-1.5">
                         {!agent.token_address ? (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-1 border-secondary/50 text-secondary hover:bg-secondary/10"
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 h-7 text-xs border-secondary/50 text-secondary hover:bg-secondary/10"
                             onClick={() => setLaunchTokenAgent(agent)}
                             disabled={!isConnected}
                           >
-                            <Rocket className="w-4 h-4" />
-                            Launch Token
+                            <Rocket className="w-3 h-3" />
+                            Token
                           </Button>
                         ) : (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-1"
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 h-7 text-xs"
                             onClick={() => setExpandedTokenAgent(
                               expandedTokenAgent === agent.id ? null : agent.id
                             )}
                           >
-                            <Coins className="w-4 h-4" />
-                            {expandedTokenAgent === agent.id ? 'Hide' : 'View'} Token
+                            <Coins className="w-3 h-3" />
+                            {expandedTokenAgent === agent.id ? 'Hide' : 'View'}
                           </Button>
                         )}
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="gap-1"
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 h-7 text-xs"
                           onClick={() => setEvolveAgent(agent)}
                         >
-                          <Dna className="w-4 h-4" />
+                          <Dna className="w-3 h-3" />
                           Evolve
                         </Button>
-                        <Button 
-                          size="sm" 
-                          className="gap-1 bg-primary hover:bg-primary/90"
+                        <Button
+                          size="sm"
+                          className="gap-1 h-7 text-xs bg-primary hover:bg-primary/90"
                           disabled={agent.is_in_match}
                           onClick={() => navigate(`/trading?agent=${agent.id}`)}
                         >
-                          <Zap className="w-4 h-4" />
-                          Enter Arena
+                          <Zap className="w-3 h-3" />
+                          Arena
                         </Button>
                       </div>
                     </div>
@@ -311,17 +312,17 @@ const Agents = () => {
             ))}
 
             {/* Create New Agent Card */}
-            <Card 
+            <Card
               className="border-dashed border-2 border-muted hover:border-primary/50 transition-colors cursor-pointer group"
               onClick={() => setIsCreateModalOpen(true)}
             >
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors">
-                  <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
+              <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3 group-hover:bg-primary/10 transition-colors">
+                  <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
-                <h3 className="font-display font-semibold text-lg mb-2">Create New Agent</h3>
-                <p className="text-sm text-muted-foreground max-w-[200px]">
-                  Build a new AI trader with custom strategy DNA
+                <h3 className="font-display font-semibold text-sm mb-1">Create New Agent</h3>
+                <p className="text-xs text-muted-foreground max-w-[180px]">
+                  Build a new AI trader with custom DNA
                 </p>
               </CardContent>
             </Card>
@@ -362,13 +363,13 @@ const Agents = () => {
 
 const DNABar = ({ label, value }: { label: string; value: number }) => (
   <div className="text-center">
-    <div className="h-12 w-full bg-muted/50 rounded relative overflow-hidden mb-1">
-      <div 
+    <div className="h-8 w-full bg-muted/50 rounded relative overflow-hidden mb-0.5">
+      <div
         className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary to-primary/60 transition-all"
         style={{ height: `${value}%` }}
       />
     </div>
-    <span className="text-[10px] text-muted-foreground">{label}</span>
+    <span className="text-[8px] text-muted-foreground">{label}</span>
   </div>
 );
 

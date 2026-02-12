@@ -2,14 +2,15 @@ import Layout from "@/components/layout/Layout";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { StatsSection } from "@/components/landing/StatsSection";
+import { ClawTokenSection } from "@/components/landing/ClawTokenSection";
 import { CTASection } from "@/components/landing/CTASection";
 import LiveMatchCard from "@/components/arena/LiveMatchCard";
 import AgentLeaderRow from "@/components/arena/AgentLeaderRow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { 
-  Zap, 
-  Trophy, 
+import {
+  Zap,
+  Trophy,
   ArrowRight,
   Loader2,
   AlertCircle
@@ -30,7 +31,7 @@ const Index = () => {
 
   useEffect(() => {
     loadData();
-    
+
     const matchChannel = matchService.subscribeToLiveMatches((newMatch) => {
       setMatches(prev => {
         const exists = prev.find(m => m.id === newMatch.id);
@@ -49,7 +50,7 @@ const Index = () => {
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const [agentsData, matchesData] = await Promise.all([
         agentService.getLeaderboard(5),
@@ -70,7 +71,7 @@ const Index = () => {
 
   const formatMatchForCard = (match: any) => {
     if (!match.agent1 || !match.agent2) return null;
-    
+
     return {
       matchId: match.id.slice(0, 4),
       agent1: {
@@ -79,8 +80,8 @@ const Index = () => {
         generation: match.agent1.generation,
         avatar: match.agent1.avatar,
         pnl: Number(match.agent1_final_pnl || 0),
-        winRate: match.agent1.total_matches 
-          ? Math.round((match.agent1.wins / match.agent1.total_matches) * 100) 
+        winRate: match.agent1.total_matches
+          ? Math.round((match.agent1.wins / match.agent1.total_matches) * 100)
           : 50,
       },
       agent2: {
@@ -89,8 +90,8 @@ const Index = () => {
         generation: match.agent2.generation,
         avatar: match.agent2.avatar,
         pnl: Number(match.agent2_final_pnl || 0),
-        winRate: match.agent2.total_matches 
-          ? Math.round((match.agent2.wins / match.agent2.total_matches) * 100) 
+        winRate: match.agent2.total_matches
+          ? Math.round((match.agent2.wins / match.agent2.total_matches) * 100)
           : 50,
       },
       timeRemaining: match.status === 'active' ? 120 : 0,
@@ -105,8 +106,8 @@ const Index = () => {
     avatar: agent.avatar,
     generation: agent.generation,
     totalWinnings: Number(agent.total_won || 0),
-    winRate: agent.total_matches 
-      ? Math.round((agent.wins / agent.total_matches) * 100) 
+    winRate: agent.total_matches
+      ? Math.round((agent.wins / agent.total_matches) * 100)
       : 0,
     matches: agent.total_matches || 0,
     recentPnL: Number(agent.total_pnl || 0),
@@ -122,6 +123,9 @@ const Index = () => {
 
       {/* Features Section */}
       <FeaturesSection />
+
+      {/* CLAW Token Section */}
+      <ClawTokenSection />
 
       {/* Live Matches Section */}
       <section className="py-16 md:py-24">
@@ -148,8 +152,8 @@ const Index = () => {
                 <div className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
                 <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Live Matches</h2>
               </div>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 className="gap-1.5 text-muted-foreground hover:text-foreground rounded-full"
                 onClick={() => navigate('/betting')}
@@ -158,7 +162,7 @@ const Index = () => {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
-            
+
             {isLoading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -197,8 +201,8 @@ const Index = () => {
                 <Trophy className="w-5 h-5 text-primary" />
                 <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Top Traders</h2>
               </div>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 className="gap-1.5 text-muted-foreground hover:text-foreground rounded-full"
                 onClick={() => navigate('/leaderboard')}
@@ -207,7 +211,7 @@ const Index = () => {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
-            
+
             {isLoading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

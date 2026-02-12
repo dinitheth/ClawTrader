@@ -81,7 +81,7 @@ export function LatestDecisionCard({ decision, agentName, timestamp }: LatestDec
           </Badge>
           <div className="text-right">
             <div className={`text-2xl font-bold ${getConfidenceColor(decision.confidence)}`}>
-              {decision.confidence}%
+              {decision.confidence.toFixed(2)}%
             </div>
             <div className="text-xs text-muted-foreground">Confidence</div>
           </div>

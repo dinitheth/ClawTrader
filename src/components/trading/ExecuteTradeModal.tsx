@@ -8,6 +8,7 @@ import { parseEther } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { buildSwapExactETHForTokens, buildSwapExactTokensForETH, getDeadline, MONAD_DEX_CONTRACTS } from '@/lib/monad-dex';
 import type { TradingDecision } from '@/lib/trading-service';
+import { useAgentVaultBalance } from '@/hooks/useAgentVaultBalance';
 
 interface ExecuteTradeModalProps {
   open: boolean;
@@ -17,39 +18,43 @@ interface ExecuteTradeModalProps {
     id: string;
     name: string;
     avatar: string;
-    balance: number;
   } | null;
   symbol: string;
   onTradeComplete: (txHash: string, success: boolean) => void;
 }
 
-export function ExecuteTradeModal({ 
-  open, 
-  onOpenChange, 
-  decision, 
-  agent, 
+export function ExecuteTradeModal({
+  open,
+  onOpenChange,
+  decision,
+  agent,
   symbol,
-  onTradeComplete 
+  onTradeComplete
 }: ExecuteTradeModalProps) {
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
   const [step, setStep] = useState<'confirm' | 'executing' | 'success' | 'error'>('confirm');
-  
-  const { 
-    sendTransaction, 
+
+  // Get ON-CHAIN balance from AgentVault
+  const { balance: onChainBalance } = useAgentVaultBalance({
+    agentId: agent?.id || '',
+  });
+
+  const {
+    sendTransaction,
     data: hash,
     isPending: isSending,
     error: sendError,
-    reset 
+    reset
   } = useSendTransaction();
 
   const { isLoading: isConfirming, isSuccess, isError } = useWaitForTransactionReceipt({
     hash,
   });
 
-  // Calculate trade amount based on decision
-  const tradeAmount = decision && agent 
-    ? (agent.balance * decision.suggestedAmount) / 100 
+  // Calculate trade amount based on decision and ON-CHAIN balance
+  const tradeAmount = decision && agent
+    ? (onChainBalance * decision.suggestedAmount) / 100
     : 0;
 
   const handleExecute = async () => {
@@ -200,7 +205,7 @@ export function ExecuteTradeModal({
                 {isSending ? 'Confirm in Wallet...' : 'Executing Swap...'}
               </p>
               <p className="text-sm text-muted-foreground">
-                {isSending 
+                {isSending
                   ? 'Please confirm the transaction in your wallet'
                   : 'Waiting for blockchain confirmation...'}
               </p>

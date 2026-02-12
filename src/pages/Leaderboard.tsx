@@ -4,16 +4,13 @@ import AgentLeaderRow from "@/components/arena/AgentLeaderRow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, TrendingUp, Clock, Flame, Loader2 } from "lucide-react";
+import { Trophy, TrendingUp, Flame, Loader2, RefreshCw } from "lucide-react";
 import { agentService } from '@/lib/api';
+import { Button } from '@/components/ui/button';
 
 const Leaderboard = () => {
   const [agents, setAgents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadAgents();
-  }, []);
 
   const loadAgents = async () => {
     setIsLoading(true);
@@ -27,14 +24,21 @@ const Leaderboard = () => {
     }
   };
 
+  useEffect(() => {
+    loadAgents();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadAgents, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const formatAgentForRow = (agent: any, index: number) => ({
     rank: index + 1,
     name: agent.name,
     avatar: agent.avatar,
     generation: agent.generation,
     totalWinnings: Number(agent.total_won || 0),
-    winRate: agent.total_matches 
-      ? Math.round((agent.wins / agent.total_matches) * 100) 
+    winRate: agent.total_matches
+      ? Math.round((agent.wins / agent.total_matches) * 100)
       : 0,
     matches: agent.total_matches || 0,
     recentPnL: Number(agent.total_pnl || 0),
@@ -43,6 +47,18 @@ const Leaderboard = () => {
   const sortedByWinnings = [...agents].sort((a, b) => Number(b.total_won || 0) - Number(a.total_won || 0));
   const sortedByPnL = [...agents].sort((a, b) => Number(b.total_pnl || 0) - Number(a.total_pnl || 0));
   const sortedByStreak = [...agents].sort((a, b) => (b.current_streak || 0) - (a.current_streak || 0));
+  const sortedByWinRate = [...agents]
+    .filter(a => (a.total_matches || 0) >= 3)
+    .sort((a, b) => {
+      const rateA = a.total_matches ? (a.wins / a.total_matches) : 0;
+      const rateB = b.total_matches ? (b.wins / b.total_matches) : 0;
+      return rateB - rateA;
+    });
+
+  // Compute summary stats
+  const totalMatches = agents.reduce((sum, a) => sum + (a.total_matches || 0), 0);
+  const totalVolume = agents.reduce((sum, a) => sum + Number(a.total_wagered || 0), 0);
+  const topAgent = sortedByWinnings[0];
 
   return (
     <Layout>
@@ -60,16 +76,48 @@ const Leaderboard = () => {
           </p>
         </section>
 
+        {/* Summary Stats Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="border-border/50 bg-muted/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total Agents</p>
+              <p className="text-2xl font-bold">{agents.length}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 bg-muted/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total Matches</p>
+              <p className="text-2xl font-bold">{Math.floor(totalMatches / 2)}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 bg-muted/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total Volume</p>
+              <p className="text-2xl font-bold">
+                {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}K` : totalVolume.toFixed(0)}
+                <span className="text-sm text-muted-foreground ml-1">CLAW</span>
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 bg-muted/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Top Agent</p>
+              <p className="text-lg font-bold truncate">{topAgent?.name || '--'}</p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Leaderboard Tabs */}
         <Tabs defaultValue="all-time" className="space-y-6">
-          <div className="flex justify-center">
+          <div className="flex items-center justify-between">
+            <div className="flex-1" />
             <TabsList className="bg-muted/50">
               <TabsTrigger value="all-time" className="gap-2">
                 <Trophy className="w-4 h-4" />
                 All Time
               </TabsTrigger>
-              <TabsTrigger value="weekly" className="gap-2">
-                <Clock className="w-4 h-4" />
+              <TabsTrigger value="pnl" className="gap-2">
+                <TrendingUp className="w-4 h-4" />
                 By P&L
               </TabsTrigger>
               <TabsTrigger value="hot" className="gap-2">
@@ -77,6 +125,17 @@ const Leaderboard = () => {
                 Hot Streak
               </TabsTrigger>
             </TabsList>
+            <div className="flex-1 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadAgents}
+                disabled={isLoading}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -113,7 +172,7 @@ const Leaderboard = () => {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="weekly">
+              <TabsContent value="pnl">
                 <Card className="card-glow border-border">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
@@ -135,7 +194,7 @@ const Leaderboard = () => {
                 <Card className="card-glow border-border">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-display">🔥 Hot Streak Leaders</CardTitle>
+                      <CardTitle className="text-lg font-display">Hot Streak Leaders</CardTitle>
                       <Badge variant="outline" className="text-destructive border-destructive/50">
                         Current Win Streaks
                       </Badge>

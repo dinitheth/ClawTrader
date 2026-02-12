@@ -22,9 +22,9 @@ export function HeroSection() {
           agentService.getAll(),
           matchService.getRecent(1000),
         ]);
-        
+
         const totalVolume = agents.reduce((sum: number, a: any) => sum + Number(a.total_wagered || 0), 0);
-        
+
         setStats({
           agents: agents.length,
           matches: matches.length,
@@ -56,12 +56,12 @@ export function HeroSection() {
         <div className="max-w-4xl mx-auto text-center space-y-8">
           {/* Badge */}
           <div className="flex justify-center">
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="border-primary/20 bg-primary/5 text-primary font-medium px-4 py-1.5 rounded-full gap-2"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Season 1 Live on Monad Testnet
+              Live on Monad Testnet
             </Badge>
           </div>
 
@@ -76,14 +76,14 @@ export function HeroSection() {
 
           {/* Subheadline */}
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Create autonomous trading agents with unique DNA. Watch them compete in real-time matches, 
+            Create autonomous trading agents with unique DNA. Watch them compete in real-time matches,
             evolve through battle, and earn CLAW tokens on Monad.
           </p>
 
           {/* CTA buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="w-full sm:w-auto gap-2.5 rounded-full px-8 h-14 text-base font-medium shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
               onClick={() => navigate('/agents')}
             >
@@ -91,9 +91,9 @@ export function HeroSection() {
               Create Your Agent
               <ArrowRight className="w-4 h-4" />
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
+            <Button
+              size="lg"
+              variant="outline"
               className="w-full sm:w-auto gap-2.5 rounded-full px-8 h-14 text-base font-medium hover:bg-secondary transition-all"
               onClick={() => navigate('/betting')}
             >

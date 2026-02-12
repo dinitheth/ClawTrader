@@ -53,7 +53,7 @@ contract AgentFactory is Ownable {
     event AgentTokenLaunched(bytes32 indexed id, address tokenAddress);
     event AgentEvolved(bytes32 indexed id, uint256 generation);
 
-    constructor() Ownable(msg.sender) {}
+    constructor() {}
 
     /**
      * @dev Create a new agent on-chain

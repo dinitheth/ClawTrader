@@ -21,7 +21,7 @@ contract ClawToken is ERC20, Ownable {
     
     event FaucetClaim(address indexed user, uint256 amount);
     
-    constructor() ERC20("ClawToken", "CLAW") Ownable(msg.sender) {
+    constructor() ERC20("ClawToken", "CLAW") {
         // Mint initial supply to deployer for liquidity
         _mint(msg.sender, 100_000_000 * 10**18); // 100M initial
     }

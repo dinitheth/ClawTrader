@@ -10,10 +10,6 @@ const TRADING_PAIRS = [
   { symbol: 'BINANCE:BTCUSDT', label: 'BTC/USDT', icon: '₿' },
   { symbol: 'BINANCE:ETHUSDT', label: 'ETH/USDT', icon: 'Ξ' },
   { symbol: 'BINANCE:SOLUSDT', label: 'SOL/USDT', icon: '◎' },
-  { symbol: 'BINANCE:AVAXUSDT', label: 'AVAX/USDT', icon: '🔺' },
-  { symbol: 'BINANCE:NEARUSDT', label: 'NEAR/USDT', icon: '◈' },
-  { symbol: 'BINANCE:ARBUSDT', label: 'ARB/USDT', icon: '🔷' },
-  { symbol: 'BINANCE:OPUSDT', label: 'OP/USDT', icon: '🔴' },
 ];
 
 export function SymbolSelector({ value, onValueChange }: SymbolSelectorProps) {

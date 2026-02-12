@@ -1,138 +1,66 @@
-# ClawTrader Arena Contracts
+## Foundry
 
-Smart contracts for the ClawTrader Arena on Monad Testnet.
+**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
-## Contract Overview
+Foundry consists of:
 
-| Contract | Purpose | File |
-|----------|---------|------|
-| TestUSDC | Mintable USDC with faucet | `TestUSDC.sol` |
-| AgentVault | User deposits for AI agents | `AgentVault.sol` |
-| VaultB | Profit distribution pool | `VaultB.sol` |
-| AgentFactory | On-chain agent registration | `AgentFactory.sol` |
-| ClawToken | Platform utility token | `ClawToken.sol` |
-| ClawArena | Match escrow and betting | `ClawArena.sol` |
+- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
+- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
+- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
+- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
 
-## Deployment Order
+## Documentation
 
-Deploy in this exact sequence:
+https://book.getfoundry.sh/
 
-1. **TestUSDC** - No dependencies
-2. **AgentVault** - Needs TestUSDC address
-3. **VaultB** - Needs TestUSDC and AgentVault addresses
-4. **AgentFactory** - No dependencies
-5. **ClawToken** - Optional, for betting
-6. **ClawArena** - Optional, needs ClawToken
+## Usage
 
-## Deployment Guide (Remix IDE)
+### Build
 
-### Prerequisites
-- MetaMask connected to Monad Testnet (Chain ID: 10143)
-- MON tokens for gas
-- Remix IDE: https://remix.ethereum.org
-
-### Step 1: Deploy TestUSDC
-
-```solidity
-// No constructor arguments
-// 10 billion USDC minted to deployer
+```shell
+$ forge build
 ```
 
-1. Create `TestUSDC.sol` in Remix
-2. Compile with Solidity 0.8.20
-3. Deploy with no arguments
-4. Save deployed address
+### Test
 
-### Step 2: Deploy AgentVault
-
-```solidity
-// Constructor: _usdc = TestUSDC address
+```shell
+$ forge test
 ```
 
-1. Create `AgentVault.sol`
-2. Deploy with TestUSDC address
-3. Save deployed address
+### Format
 
-### Step 3: Deploy VaultB
-
-```solidity
-// Constructor: _usdc = TestUSDC, _agentVault = AgentVault address
+```shell
+$ forge fmt
 ```
 
-1. Create `VaultB.sol`
-2. Deploy with both addresses
-3. Save deployed address
+### Gas Snapshots
 
-### Step 4: Deploy AgentFactory
-
-```solidity
-// No constructor arguments
+```shell
+$ forge snapshot
 ```
 
-### Step 5: Configure Contracts
+### Anvil
 
-After deployment, call these functions:
-
-```javascript
-// On AgentVault:
-setVaultB(VaultB_address)
-setOperator(backend_wallet_address)
-
-// Transfer USDC to VaultB for profit pool:
-// On TestUSDC:
-transfer(VaultB_address, 1000000000000000) // 1B USDC
+```shell
+$ anvil
 ```
 
-### Step 6: Update Frontend
+### Deploy
 
-Update `src/lib/contracts.ts` with deployed addresses.
-
-## Contract Features
-
-### TestUSDC
-- ERC20 with 6 decimals
-- 10 billion initial supply
-- Public faucet: 1000 USDC/hour/address
-- Role-based minting
-
-### AgentVault
-- Per-user per-agent balance tracking
-- Operator can simulate trades
-- Profits from VaultB
-- 1% platform fee on profits
-
-### VaultB
-- USDC reserves for profit distribution
-- Only AgentVault can request distributions
-- Emergency withdraw for owner
-
-### AgentFactory
-- Permanent on-chain agent records
-- Stores DNA immutably
-- Links to Supabase UUIDs
-
-## Network Config
-
-| Parameter | Value |
-|-----------|-------|
-| Network | Monad Testnet |
-| Chain ID | 10143 |
-| RPC | https://testnet-rpc.monad.xyz |
-| Explorer | https://testnet.monadexplorer.com |
-
-## Architecture
-
+```shell
+$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
 ```
-User deposits USDC
-    ↓
-AgentVault.deposit(agentId, amount)
-    ↓
-Agent trades autonomously (off-chain AI)
-    ↓
-Backend calls AgentVault.simulateTrade()
-    ↓
-Profit? → VaultB.distributeProfitTo() → User balance increases
-Loss? → User balance decreases
-    ↓
-User withdraws via AgentVault.withdraw()
+
+### Cast
+
+```shell
+$ cast <subcommand>
+```
+
+### Help
+
+```shell
+$ forge --help
+$ anvil --help
+$ cast --help
 ```

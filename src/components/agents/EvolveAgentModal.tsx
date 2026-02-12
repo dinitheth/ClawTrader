@@ -12,6 +12,8 @@ import { Slider } from '@/components/ui/slider';
 import { Dna, Sparkles, Loader2, ArrowRight, Zap, Brain } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
+import { CONTRACTS, AGENT_FACTORY_ABI, uuidToBytes32 } from '@/lib/contracts';
 
 interface Agent {
   id: string;
@@ -48,9 +50,18 @@ const DNA_LABELS: Record<DNAKey, string> = {
 
 export function EvolveAgentModal({ open, onOpenChange, agent, onSuccess }: EvolveAgentModalProps) {
   const { toast } = useToast();
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const { writeContractAsync } = useWriteContract();
   const [isEvolving, setIsEvolving] = useState(false);
+  const [txStep, setTxStep] = useState<'idle' | 'signing' | 'confirming' | 'saving'>('idle');
   const [evolveMode, setEvolveMode] = useState<'ai' | 'manual'>('ai');
-  
+
+  const FACTORY_ADDRESS = CONTRACTS.AGENT_FACTORY.address;
+
+  // Convert Supabase agent UUID to bytes32 for contract
+  const agentIdBytes32 = uuidToBytes32(agent.id);
+
   // New DNA values for manual mode
   const [newDNA, setNewDNA] = useState<Record<DNAKey, number>>({
     dna_risk_tolerance: agent.dna_risk_tolerance,
@@ -60,34 +71,63 @@ export function EvolveAgentModal({ open, onOpenChange, agent, onSuccess }: Evolv
     dna_contrarian_bias: agent.dna_contrarian_bias,
   });
 
+  // Helper: call on-chain evolveAgent
+  const evolveOnChain = async (risk: number, aggr: number, pattern: number, timing: number, contrarian: number) => {
+    setTxStep('signing');
+    const txHash = await writeContractAsync({
+      address: FACTORY_ADDRESS,
+      abi: AGENT_FACTORY_ABI,
+      functionName: 'evolveAgent',
+      args: [
+        agentIdBytes32,
+        BigInt(Math.round(risk * 100)),
+        BigInt(Math.round(aggr * 100)),
+        BigInt(Math.round(pattern * 100)),
+        BigInt(Math.round(timing * 100)),
+        BigInt(Math.round(contrarian * 100)),
+      ],
+    });
+    setTxStep('confirming');
+    if (publicClient) {
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+    }
+    setTxStep('saving');
+  };
+
   const handleAIEvolve = async () => {
+    if (!isConnected || !address) {
+      toast({ title: 'Wallet Required', description: 'Connect your wallet to evolve on-chain', variant: 'destructive' });
+      return;
+    }
     setIsEvolving(true);
     try {
       // Calculate performance-based mutations
       const winRate = agent.total_matches ? (agent.wins || 0) / agent.total_matches : 0.5;
       const pnl = agent.total_pnl || 0;
-      
+
       // AI-suggested mutations based on performance
       const mutations: Partial<Record<DNAKey, number>> = {};
       const mutationStrength = 0.1; // 10% max change
-      
-      // If losing, reduce aggression and risk
+
       if (winRate < 0.4) {
         mutations.dna_aggression = Math.max(0, agent.dna_aggression - mutationStrength * Math.random());
         mutations.dna_risk_tolerance = Math.max(0, agent.dna_risk_tolerance - mutationStrength * Math.random());
       }
-      
-      // If winning but low PnL, increase aggression
       if (winRate > 0.5 && pnl < 10) {
         mutations.dna_aggression = Math.min(1, agent.dna_aggression + mutationStrength * Math.random());
       }
-      
-      // Random mutations to other traits
       const traits: DNAKey[] = ['dna_pattern_recognition', 'dna_timing_sensitivity', 'dna_contrarian_bias'];
       const randomTrait = traits[Math.floor(Math.random() * traits.length)];
       mutations[randomTrait] = Math.max(0, Math.min(1, agent[randomTrait] + (Math.random() - 0.5) * mutationStrength * 2));
 
-      // Store before state for evolution log
+      const finalDNA = {
+        risk: mutations.dna_risk_tolerance ?? agent.dna_risk_tolerance,
+        aggression: mutations.dna_aggression ?? agent.dna_aggression,
+        pattern: mutations.dna_pattern_recognition ?? agent.dna_pattern_recognition,
+        timing: mutations.dna_timing_sensitivity ?? agent.dna_timing_sensitivity,
+        contrarian: mutations.dna_contrarian_bias ?? agent.dna_contrarian_bias,
+      };
+
       const dnaBefore = {
         risk: agent.dna_risk_tolerance,
         aggression: agent.dna_aggression,
@@ -96,7 +136,10 @@ export function EvolveAgentModal({ open, onOpenChange, agent, onSuccess }: Evolv
         contrarian: agent.dna_contrarian_bias,
       };
 
-      // Update agent
+      // ═══ Step 1: On-chain evolution via AgentFactory ═══
+      await evolveOnChain(finalDNA.risk, finalDNA.aggression, finalDNA.pattern, finalDNA.timing, finalDNA.contrarian);
+
+      // ═══ Step 2: Update Supabase ═══
       const { error: updateError } = await supabase
         .from('agents')
         .update({
@@ -113,29 +156,33 @@ export function EvolveAgentModal({ open, onOpenChange, agent, onSuccess }: Evolv
         evolution_type: 'ai_suggestion',
         trigger_reason: `Win rate: ${(winRate * 100).toFixed(0)}%, P&L: ${pnl.toFixed(2)}`,
         dna_before: dnaBefore,
-        dna_after: { ...dnaBefore, ...mutations },
+        dna_after: finalDNA,
       });
 
       toast({
-        title: 'Evolution Complete!',
-        description: `${agent.avatar} ${agent.name} has evolved based on AI analysis`,
+        title: '🧬 Evolution Recorded On-Chain!',
+        description: `${agent.avatar} ${agent.name} DNA evolved on Monad blockchain`,
       });
 
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Evolution error:', error);
-      toast({
-        title: 'Evolution Failed',
-        description: 'Unable to evolve agent. Please try again.',
-        variant: 'destructive',
-      });
+      const msg = error?.message?.includes('User rejected') ? 'Transaction rejected by wallet'
+        : error?.message?.includes('Not owner') ? 'Only the agent owner can evolve'
+          : 'Unable to evolve agent. Please try again.';
+      toast({ title: 'Evolution Failed', description: msg, variant: 'destructive' });
     } finally {
       setIsEvolving(false);
+      setTxStep('idle');
     }
   };
 
   const handleManualEvolve = async () => {
+    if (!isConnected || !address) {
+      toast({ title: 'Wallet Required', description: 'Connect your wallet to evolve on-chain', variant: 'destructive' });
+      return;
+    }
     setIsEvolving(true);
     try {
       const dnaBefore = {
@@ -146,6 +193,16 @@ export function EvolveAgentModal({ open, onOpenChange, agent, onSuccess }: Evolv
         contrarian: agent.dna_contrarian_bias,
       };
 
+      // ═══ Step 1: On-chain evolution via AgentFactory ═══
+      await evolveOnChain(
+        newDNA.dna_risk_tolerance,
+        newDNA.dna_aggression,
+        newDNA.dna_pattern_recognition,
+        newDNA.dna_timing_sensitivity,
+        newDNA.dna_contrarian_bias
+      );
+
+      // ═══ Step 2: Update Supabase ═══
       const { error } = await supabase
         .from('agents')
         .update({
@@ -176,21 +233,21 @@ export function EvolveAgentModal({ open, onOpenChange, agent, onSuccess }: Evolv
       });
 
       toast({
-        title: 'Evolution Complete!',
-        description: `${agent.avatar} ${agent.name} DNA has been modified`,
+        title: '🧬 Evolution Recorded On-Chain!',
+        description: `${agent.avatar} ${agent.name} DNA modified on Monad blockchain`,
       });
 
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Evolution error:', error);
-      toast({
-        title: 'Evolution Failed',
-        description: 'Unable to modify DNA. Please try again.',
-        variant: 'destructive',
-      });
+      const msg = error?.message?.includes('User rejected') ? 'Transaction rejected by wallet'
+        : error?.message?.includes('Not owner') ? 'Only the agent owner can evolve'
+          : 'Unable to modify DNA. Please try again.';
+      toast({ title: 'Evolution Failed', description: msg, variant: 'destructive' });
     } finally {
       setIsEvolving(false);
+      setTxStep('idle');
     }
   };
 
@@ -254,7 +311,7 @@ export function EvolveAgentModal({ open, onOpenChange, agent, onSuccess }: Evolv
                   <span className="font-medium">AI Evolution</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  AI will analyze your agent's performance and suggest optimal DNA mutations 
+                  AI will analyze your agent's performance and suggest optimal DNA mutations
                   based on win rate, P&L, and trading patterns.
                 </p>
               </div>
@@ -302,18 +359,22 @@ export function EvolveAgentModal({ open, onOpenChange, agent, onSuccess }: Evolv
 
           <Button
             onClick={evolveMode === 'ai' ? handleAIEvolve : handleManualEvolve}
-            disabled={isEvolving}
+            disabled={isEvolving || !isConnected}
             className="w-full gap-2"
           >
-            {isEvolving ? (
+            {!isConnected ? (
+              <>Connect Wallet to Evolve</>
+            ) : isEvolving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Evolving...
+                {txStep === 'signing' ? 'Sign in wallet...' :
+                  txStep === 'confirming' ? 'Confirming on-chain...' :
+                    txStep === 'saving' ? 'Saving to database...' : 'Preparing...'}
               </>
             ) : (
               <>
                 <Dna className="w-4 h-4" />
-                {evolveMode === 'ai' ? 'Let AI Evolve' : 'Apply Mutations'}
+                {evolveMode === 'ai' ? 'Let AI Evolve (On-Chain)' : 'Apply Mutations (On-Chain)'}
               </>
             )}
           </Button>

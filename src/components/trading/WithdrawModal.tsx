@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowDown, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { CONTRACTS, AGENT_VAULT_ABI, uuidToBytes32, parseUSDC, isContractConfigured } from '@/lib/contracts';
+import { useAgentVaultBalance } from '@/hooks/useAgentVaultBalance';
 
 interface WithdrawModalProps {
   open: boolean;
@@ -20,7 +22,6 @@ interface WithdrawModalProps {
     id: string;
     name: string;
     avatar: string;
-    balance: number;
   } | null;
   onWithdrawn: (amount: number) => void;
 }
@@ -29,6 +30,46 @@ export function WithdrawModal({ open, onOpenChange, agent, onWithdrawn }: Withdr
   const [amount, setAmount] = useState('');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const { toast } = useToast();
+  const { isConnected } = useAccount();
+
+  // Check if contracts are configured
+  const isVaultConfigured = isContractConfigured('AGENT_VAULT');
+
+  // Get ON-CHAIN balance from AgentVault
+  const { balance: onChainBalance, isLoading: isBalanceLoading, refetch: refetchBalance } = useAgentVaultBalance({
+    agentId: agent?.id || '',
+    refetchInterval: 10000,
+  });
+
+  // Withdraw from vault
+  const {
+    writeContract: writeWithdraw,
+    data: withdrawHash,
+    isPending: isWithdrawPending,
+    reset: resetWithdraw
+  } = useWriteContract();
+
+  // Wait for withdraw transaction
+  const { isLoading: isWaitingWithdraw, isSuccess: withdrawSuccess } = useWaitForTransactionReceipt({
+    hash: withdrawHash,
+  });
+
+  // Handle withdraw success
+  useEffect(() => {
+    if (withdrawSuccess && isWithdrawing) {
+      const withdrawAmount = parseFloat(amount);
+      onWithdrawn(withdrawAmount);
+      refetchBalance(); // Refresh on-chain balance
+      toast({
+        title: 'Withdrawal Successful!',
+        description: `Withdrew ${withdrawAmount.toFixed(2)} USDC from ${agent?.name} to your wallet`,
+      });
+      setAmount('');
+      setIsWithdrawing(false);
+      resetWithdraw();
+      onOpenChange(false);
+    }
+  }, [withdrawSuccess, isWithdrawing]);
 
   const handleWithdraw = async () => {
     if (!agent) return;
@@ -43,10 +84,19 @@ export function WithdrawModal({ open, onOpenChange, agent, onWithdrawn }: Withdr
       return;
     }
 
-    if (withdrawAmount > agent.balance) {
+    if (withdrawAmount > onChainBalance) {
       toast({
         title: 'Insufficient Balance',
-        description: `Agent only has ${agent.balance.toFixed(2)} USDC available`,
+        description: `Agent only has ${onChainBalance.toFixed(2)} USDC available on-chain`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isVaultConfigured || !isConnected) {
+      toast({
+        title: 'Wallet Not Connected',
+        description: 'Please connect your wallet to withdraw',
         variant: 'destructive',
       });
       return;
@@ -55,43 +105,34 @@ export function WithdrawModal({ open, onOpenChange, agent, onWithdrawn }: Withdr
     setIsWithdrawing(true);
 
     try {
-      // Update agent balance in database
-      const newBalance = agent.balance - withdrawAmount;
-      const { error } = await supabase
-        .from('agents')
-        .update({ balance: newBalance })
-        .eq('id', agent.id);
+      const amountWei = parseUSDC(withdrawAmount);
+      const agentIdBytes32 = uuidToBytes32(agent.id);
 
-      if (error) throw error;
-
-      toast({
-        title: 'Withdrawal Successful',
-        description: `Withdrew ${withdrawAmount.toFixed(2)} USDC from ${agent.name}`,
+      writeWithdraw({
+        address: CONTRACTS.AGENT_VAULT.address,
+        abi: AGENT_VAULT_ABI,
+        functionName: 'withdraw',
+        args: [agentIdBytes32, amountWei],
       });
-
-      onWithdrawn(withdrawAmount);
-      setAmount('');
-      onOpenChange(false);
     } catch (err) {
-      console.error('Withdrawal error:', err);
+      console.error('Withdraw error:', err);
       toast({
         title: 'Withdrawal Failed',
-        description: 'Unable to process withdrawal. Please try again.',
+        description: 'Failed to withdraw from vault. Please try again.',
         variant: 'destructive',
       });
-    } finally {
       setIsWithdrawing(false);
     }
   };
 
   const handleMaxAmount = () => {
-    if (agent) {
-      setAmount(agent.balance.toString());
-    }
+    setAmount(onChainBalance.toString());
   };
 
+  const isProcessing = isWithdrawing || isWithdrawPending || isWaitingWithdraw;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => { if (!isProcessing) onOpenChange(open); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -99,7 +140,7 @@ export function WithdrawModal({ open, onOpenChange, agent, onWithdrawn }: Withdr
             Withdraw from Agent
           </DialogTitle>
           <DialogDescription>
-            Withdraw USDC profits from your agent's vault
+            Withdraw USDC from your agent's on-chain vault to your wallet
           </DialogDescription>
         </DialogHeader>
 
@@ -112,16 +153,34 @@ export function WithdrawModal({ open, onOpenChange, agent, onWithdrawn }: Withdr
                 </div>
                 <div>
                   <p className="font-medium">{agent.name}</p>
-                  <p className="text-sm text-muted-foreground">Agent Vault</p>
+                  <p className="text-sm text-muted-foreground">On-Chain Vault</p>
                 </div>
               </div>
               <div className="text-center p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground mb-1">Available Balance</p>
+                <p className="text-xs text-muted-foreground mb-1">On-Chain Balance</p>
                 <p className="text-2xl font-mono font-bold text-accent">
-                  {agent.balance.toFixed(2)} USDC
+                  {isBalanceLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin inline" />
+                  ) : (
+                    `${onChainBalance.toFixed(2)} USDC`
+                  )}
                 </p>
               </div>
             </div>
+
+            {/* Transaction Progress */}
+            {isProcessing && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border">
+                {withdrawSuccess ? (
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                ) : (
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                )}
+                <span className="text-sm">
+                  {withdrawSuccess ? 'Withdrawal complete!' : 'Processing withdrawal...'}
+                </span>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="withdraw-amount">Withdraw Amount (USDC)</Label>
@@ -134,8 +193,9 @@ export function WithdrawModal({ open, onOpenChange, agent, onWithdrawn }: Withdr
                   onChange={(e) => setAmount(e.target.value)}
                   className="pr-16"
                   min="0"
-                  max={agent.balance}
+                  max={onChainBalance}
                   step="0.01"
+                  disabled={isProcessing}
                 />
                 <Button
                   type="button"
@@ -143,13 +203,14 @@ export function WithdrawModal({ open, onOpenChange, agent, onWithdrawn }: Withdr
                   size="sm"
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-7 text-xs"
                   onClick={handleMaxAmount}
+                  disabled={isProcessing}
                 >
                   MAX
                 </Button>
               </div>
             </div>
 
-            {parseFloat(amount) > agent.balance && (
+            {parseFloat(amount) > onChainBalance && (
               <div className="flex items-center gap-2 text-destructive text-sm">
                 <AlertCircle className="w-4 h-4" />
                 <span>Amount exceeds available balance</span>
@@ -158,13 +219,13 @@ export function WithdrawModal({ open, onOpenChange, agent, onWithdrawn }: Withdr
 
             <Button
               onClick={handleWithdraw}
-              disabled={isWithdrawing || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > agent.balance}
+              disabled={isProcessing || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > onChainBalance || !isConnected}
               className="w-full gap-2"
             >
-              {isWithdrawing ? (
+              {isProcessing ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing...
+                  {isWaitingWithdraw ? 'Confirming...' : 'Processing...'}
                 </>
               ) : (
                 <>
