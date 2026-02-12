@@ -12,6 +12,8 @@
  */
 
 import { ethers } from 'ethers';
+import express from 'express';
+import cors from 'cors';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -266,6 +268,26 @@ async function start() {
 
     log('info', 'Server running. Waiting for bets...');
 }
+
+// ── HTTP Health Check Server ─────────────────────────────────────
+const app = express();
+app.use(cors());
+
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'online',
+        server: 'settlement-server',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        activeMatches: activeMatchIds.size,
+        settledMatches: settledMatchIds.size
+    });
+});
+
+const HTTP_PORT = 3002;
+app.listen(HTTP_PORT, () => {
+    console.log(`🌐 Health endpoint running on port ${HTTP_PORT}`);
+});
 
 start().catch(err => {
     log('error', 'Fatal', { error: err.message });

@@ -475,6 +475,16 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// Health check endpoint for frontend status monitoring
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'online',
+        server: 'trading-server',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`\n${'='.repeat(60)}`);

@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { ConnectButton } from '@/components/wallet/ConnectButton';
 import { FaucetButton } from '@/components/header/FaucetButton';
+import { ServerStatus } from '@/components/header/ServerStatus';
 import { useAccount } from 'wagmi';
 import { CONTRACTS } from '@/lib/contracts';
 import SwapModal from '@/components/swap/SwapModal';
@@ -102,6 +103,7 @@ const Header = () => {
                 Swap
               </button>
               <FaucetButton />
+              <ServerStatus />
               <ThemeToggle />
               <ConnectButton />
             </div>
