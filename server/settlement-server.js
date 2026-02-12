@@ -285,7 +285,7 @@ app.get('/health', (req, res) => {
 });
 
 const HTTP_PORT = 3002;
-app.listen(HTTP_PORT, () => {
+app.listen(HTTP_PORT, '0.0.0.0', () => {
     console.log(`🌐 Health endpoint running on port ${HTTP_PORT}`);
 });
 
