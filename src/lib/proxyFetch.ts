@@ -1,33 +1,42 @@
+/**
+ * Robust CORS proxy fetcher with parallel racing.
+ * Fires all proxies at once and returns whichever succeeds first.
+ * This is MUCH faster than sequential failover.
+ */
+
+const PROXIES = [
+    (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
+
+const PROXY_TIMEOUT = 6000; // 6s max per proxy
+
 export async function fetchWithProxy(targetUrl: string, options: RequestInit = {}): Promise<Response> {
-    const proxies = [
-        (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        (url: string) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-        (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-        (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`,
-    ];
-
-    let lastError: any;
-
-    for (const proxy of proxies) {
+    // Race all proxies in parallel — first successful response wins
+    const proxyPromises = PROXIES.map(async (proxy, i) => {
+        const proxyUrl = proxy(targetUrl);
         try {
-            const proxyUrl = proxy(targetUrl);
             const response = await fetch(proxyUrl, {
                 ...options,
-                signal: options.signal || AbortSignal.timeout(5000) // 5s timeout per proxy
+                signal: options.signal || AbortSignal.timeout(PROXY_TIMEOUT),
             });
 
             if (response.ok) {
                 return response;
             }
-
-            // If 403/429/500, try next proxy
-            console.warn(`Proxy failed: ${proxyUrl} -> ${response.status}`);
-            lastError = new Error(`Proxy returned ${response.status}`);
+            // Non-ok response — reject so next proxy can win
+            throw new Error(`proxy-${i}: ${response.status}`);
         } catch (err) {
-            console.warn(`Proxy error: ${err}`);
-            lastError = err;
+            throw err; // Let Promise.any handle it
         }
-    }
+    });
 
-    throw lastError || new Error('All proxies failed');
+    try {
+        // Promise.any resolves with the FIRST fulfilled promise
+        return await Promise.any(proxyPromises);
+    } catch (aggregateError) {
+        // All proxies failed
+        throw new Error('All CORS proxies failed. Check your network connection.');
+    }
 }
