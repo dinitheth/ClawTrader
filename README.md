@@ -17,7 +17,7 @@ ClawTrader is a decentralized AI trading arena built on the Monad blockchain. Us
 - [Smart Contract Integration](#smart-contract-integration)
   - [Contract Addresses](#contract-addresses)
   - [AgentFactory](#agentfactory)
-  - [AgentVaultV2](#agentvaultv2)
+  - [AgentVaultV2 (Vault Mechanics)](#agentvaultv2-vault-mechanics)
   - [BettingEscrow](#bettingescrow)
   - [ClawArena](#clawarena)
   - [SimpleDEX](#simpledex)
@@ -25,6 +25,8 @@ ClawTrader is a decentralized AI trading arena built on the Monad blockchain. Us
   - [ClawToken](#clawtoken)
 - [Strategy DNA System](#strategy-dna-system)
 - [AI Decision Engine](#ai-decision-engine)
+- [Trading Server (Backend)](#trading-server-backend)
+- [On-Chain Leaderboard](#on-chain-leaderboard)
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
 - [Services and APIs](#services-and-apis)
@@ -99,11 +101,43 @@ React Component (Page)
     |         v
     |     Smart Contracts (AgentFactory, AgentVaultV2, SimpleDEX, etc.)
     |
+    +---> Trading Server (VPS: 96.30.205.215:3001)
+    |         |
+    |         +---> CoinGecko API (market data for decisions)
+    |         +---> AgentVaultV2 (on-chain trade execution)
+    |         +---> SimpleDEX (token swaps)
+    |
     +---> External APIs
               |
               +---> CoinGecko API (crypto market data)
               +---> PandaScore API (esports match data)
               +---> TradingView Widget (price charts)
+```
+
+### Server Architecture
+
+```
++---------------------------+     +-----------------------------+
+|   Frontend (Vercel)       |     |   Trading Server (VPS)      |
+|   clawtrader.vercel.app   |     |   96.30.205.215:3001        |
+|                           |     |                             |
+|  - React + Vite + TS      |     |  - Node.js + Express        |
+|  - Reads on-chain data    |<--->|  - Executes real trades      |
+|    via viem (RPC calls)   |     |  - Holds operator wallet     |
+|  - Shows leaderboard      |     |  - Smart trading decisions   |
+|    from contract data     |     |  - Position tracking         |
++---------------------------+     +-----------------------------+
+            |                                  |
+            v                                  v
++---------------------------+     +-----------------------------+
+|   Supabase (Cloud)        |     |   Monad Testnet             |
+|                           |     |   Chain ID: 10143           |
+|  - PostgreSQL database    |     |                             |
+|  - Agent metadata         |     |  - AgentVaultV2 contract    |
+|  - Match history          |     |  - SimpleDEX contract       |
+|  - User profiles          |     |  - AgentFactory contract    |
+|  - Edge Functions         |     |  - All token contracts      |
++---------------------------+     +-----------------------------+
 ```
 
 ### State Management
@@ -132,7 +166,7 @@ The landing page provides an overview of the entire platform.
 - `AgentLeaderRow` -- Top-performing agents ranked by winnings
 
 **Data Sources**:
-- `agentService.getLeaderboard(5)` fetches top 5 agents from Supabase
+- `fetchOnChainLeaderboard()` fetches agent metadata from Supabase, then reads real vault USDC balances directly from the AgentVaultV2 contract on Monad Testnet via viem
 - `matchService.getRecent(4)` fetches recent matches with joined agent data
 - `profileService.getProfileCount()` fetches real registered user count
 - `matchService.subscribeToLiveMatches()` provides real-time match updates via Supabase Realtime channels
@@ -331,16 +365,24 @@ Agent ID Generation:
 
 **Route**: `/leaderboard`
 
-Ranks all agents by performance metrics.
+Ranks all agents by **real on-chain vault balances** read directly from the AgentVaultV2 smart contract.
+
+**Data Pipeline**:
+1. Fetch all agents from Supabase (metadata: name, avatar, generation, trade count)
+2. For each agent, convert UUID to `bytes32` and call `getAgentTotalBalance(bytes32)` on the AgentVaultV2 contract
+3. Parse the returned `uint256` as USDC (6 decimals)
+4. Calculate P&L by comparing current vault balance to initial deposit
 
 **Tabs**:
-- **All Time** -- Sorted by total winnings (CLAW earned across all matches)
-- **By P&L** -- Sorted by total profit and loss
-- **Hot Streak** -- Filtered to agents with active win streaks
+- **By Vault** -- Sorted by on-chain USDC vault balance (highest first)
+- **By P&L** -- Sorted by profit/loss percentage
+- **By Trades** -- Sorted by total trade count
 
-**Summary Stats Bar**: Displays total agents, total matches, total trading volume, and the name of the current top-performing agent.
+**Summary Stats Bar**: Displays total agents, total trades, total vault value (live USDC from contract), and the name of the top-performing agent.
 
 **Auto-refresh**: Data reloads every 30 seconds. Manual refresh button available.
+
+**Key**: All balance data is **real on-chain data**, not mock/demo data. If an agent has $0.00, it means no USDC has been deposited to that agent's vault slot yet.
 
 ---
 
@@ -392,17 +434,76 @@ Registers AI agents on-chain with immutable DNA. Inherits OpenZeppelin `Ownable`
 
 **Events**: `AgentCreated`, `AgentTokenLaunched`, `AgentEvolved`
 
-### AgentVaultV2
+### AgentVaultV2 (Vault Mechanics)
 
-**Source**: `contracts/AgentVaultV2.sol`
+**Source**: `contracts/AgentVaultV2.sol`  
+**Address**: `0x50646200817C52BFa61a5398b3C6dcf217b606Cf`
 
-Holds user USDC deposits and executes trades through SimpleDEX on behalf of agents.
+#### How the Vault Works
 
-**Key Functions**:
-- `deposit(amount)` -- Deposits USDC (requires prior ERC-20 approval)
-- `withdraw(amount)` -- Withdraws USDC to caller
-- `executeTrade(tokenIn, tokenOut, amountIn)` -- Executes swap via SimpleDEX
-- `getBalance(user)` -- Returns user USDC balance in vault
+The AgentVaultV2 is a **single smart contract** that manages USDC deposits for **all agents**. It does **NOT** deploy a separate vault per agent. Instead, it uses an internal mapping to track balances per `(userAddress, agentId)` pair:
+
+```
++---------------------------------------------------+
+| AgentVaultV2 Contract (single instance)           |
+|                                                   |
+|  Internal Balance Mapping:                        |
+|  mapping(address user => mapping(bytes32 agentId  |
+|         => uint256 balance))                      |
+|                                                   |
+|  Example:                                         |
+|  User 0xABC... + Agent "omega-shark"  => $150.00  |
+|  User 0xABC... + Agent "iron-claw"    => $85.50   |
+|  User 0xDEF... + Agent "dark-shark"   => $200.00  |
+|                                                   |
+|  getAgentTotalBalance(agentId):                   |
+|    Returns SUM of all users' deposits for that    |
+|    agent (e.g., omega-shark total = $150.00)      |
+|                                                   |
+|  getUserAgentBalance(user, agentId):               |
+|    Returns ONE user's deposit for that agent       |
++---------------------------------------------------+
+```
+
+#### Key Concepts
+
+- **One contract, many agents**: All agents share the same contract at `0x50646...`. The contract tracks who deposited how much for which agent.
+- **Agent IDs are bytes32**: UUIDs from Supabase are converted to `bytes32` by removing dashes and padding with zeros. E.g., `a1b2c3d4-e5f6-...` becomes `0xa1b2c3d4e5f6...000000`.
+- **Operator wallet**: The trading server holds a private key (`TRADING_WALLET_PRIVATE_KEY`) that acts as the **operator** -- it can execute trades on behalf of any agent via `executeBuy()` and `executeSell()`.
+- **User deposits**: Users deposit USDC via the UI (`approve` + `deposit`). Their USDC goes into the vault under their wallet+agentId.
+- **Trading execution**: The operator (trading server) calls `executeBuy(agentId, user, token, amount, minOut)` which swaps USDC from the user's agent slot to tokens via SimpleDEX.
+
+#### Key Functions
+
+| Function | Who Calls It | What It Does |
+|---|---|---|
+| `deposit(agentId, amount)` | User via UI | Deposits USDC into vault for a specific agent |
+| `withdraw(agentId, amount)` | User via UI | Withdraws USDC back to user's wallet |
+| `executeBuy(agentId, user, token, usdcAmount, minTokensOut)` | Operator (trading server) | Buys tokens using user's USDC via SimpleDEX |
+| `executeSell(agentId, user, token, tokenAmount, minUsdcOut)` | Operator (trading server) | Sells tokens back to USDC via SimpleDEX |
+| `getUserAgentBalance(user, agentId)` | Anyone (view) | Returns one user's USDC balance for one agent |
+| `getUserAgentTokenBalance(user, agentId, token)` | Anyone (view) | Returns one user's token balance for one agent |
+| `getAgentTotalBalance(agentId)` | Anyone (view) | Returns total USDC across all users for one agent |
+| `getUserAgents(user)` | Anyone (view) | Returns list of agent IDs the user has deposited to |
+
+#### Deposit and Trading Flow
+
+```
+1. User deposits $100 USDC to Agent "OMEGA SHARK"
+   User wallet --> approve(AgentVaultV2, $100) --> USDC contract
+   User wallet --> deposit(omegaSharkId, $100)  --> AgentVaultV2
+   Result: vault[user][omegaShark] = $100
+
+2. Trading Server decides to BUY tBTC for OMEGA SHARK
+   Operator wallet --> executeBuy(omegaSharkId, userAddr, tBTC, $30, 0)
+   AgentVaultV2 --> swaps $30 USDC for tBTC via SimpleDEX
+   Result: vault[user][omegaShark] = $70 USDC + some tBTC
+
+3. Trading Server decides to SELL tBTC for OMEGA SHARK
+   Operator wallet --> executeSell(omegaSharkId, userAddr, tBTC, tokenAmt, 0)
+   AgentVaultV2 --> swaps tBTC back to USDC via SimpleDEX
+   Result: vault[user][omegaShark] = $105 USDC (profit!)
+```
 
 ### BettingEscrow
 
@@ -491,6 +592,124 @@ When the edge function is unavailable, the local engine uses a deterministic alg
 7. **Risk Management**: Risk Tolerance DNA controls stop-loss width (2% to 10%) and take-profit targets (3% to 15%).
 
 ---
+
+## Trading Server (Backend)
+
+**Source**: `server/trading-server.js`  
+**Hosted on**: VPS at `96.30.205.215:3001`  
+**Run command**: `node server/trading-server.js`
+
+The Trading Server is a Node.js + Express application that runs server-side on a VPS. It holds the **operator private key** and executes real on-chain trades through the AgentVaultV2 contract.
+
+### Why a Separate Server?
+
+The frontend runs in the user's browser and can only sign transactions with the **user's wallet** (via MetaMask). But trade execution (`executeBuy`, `executeSell`) requires the **operator's wallet** -- a server-side key that has permission to trade on behalf of agents. This is why the trading server exists separately.
+
+### How It Works
+
+```
+Frontend (Trading.tsx)                    Trading Server (VPS)
+       |                                         |
+       | POST /api/smart-trade                    |
+       | { symbol, agentId, userAddress, DNA }    |
+       |---------------------------------------->|
+       |                                         |
+       |                    1. Fetch market data from CoinGecko
+       |                    2. Read agent's positions from AgentVaultV2
+       |                    3. Run Smart Decision Engine (DNA-based)
+       |                    4. If BUY/SELL: execute on-chain via operator wallet
+       |                                         |
+       |<----------------------------------------|
+       | { decision, marketData, trade: { txHash } }
+```
+
+### Smart Decision Engine
+
+The server's `makeSmartDecision()` function determines BUY/SELL/HOLD based on:
+
+| Input | Source | How It's Used |
+|---|---|---|
+| `priceChange24h` | CoinGecko API | Negative = dip (buy signal), Positive = rally (sell signal) |
+| `pricePosition` | Calculated from `high24h`/`low24h` | 0-100% position in daily range |
+| Agent DNA `aggression` | Supabase/on-chain | Controls position size (20-40% of balance) |
+| Agent DNA `riskTolerance` | Supabase/on-chain | Controls stop-loss width |
+| Agent DNA `contrarianBias` | Supabase/on-chain | Adjusts buy/sell thresholds |
+| Agent's token holdings | Read from AgentVaultV2 | Can only SELL if has position > $1 |
+| Agent's USDC balance | Read from AgentVaultV2 | Can only BUY if has >= $5 USDC |
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/smart-trade` | POST | Makes AI decision + executes trade on-chain |
+| `/api/execute-trade` | POST | Legacy: executes a specific BUY/SELL trade |
+| `/api/agent-balances/:userAddress/:agentId` | GET | Returns agent's USDC + token balances from contract |
+| `/api/health` | GET | Server health check + operator status |
+| `/health` | GET | Simple health check for monitoring |
+
+### Server Hosting
+
+The trading server runs on a Vultr VPS at IP `96.30.205.215`. It:
+- Listens on port `3001`
+- Uses CORS to allow requests from the Vercel frontend
+- Connects to Monad Testnet via `https://testnet-rpc.monad.xyz`
+- Uses the `TRADING_WALLET_PRIVATE_KEY` from `.env` as the operator wallet
+
+To run the server locally:
+```bash
+# Make sure .env has TRADING_WALLET_PRIVATE_KEY and MONAD_RPC_URL
+node server/trading-server.js
+```
+
+---
+
+## On-Chain Leaderboard
+
+**Source**: `src/lib/onchain-leaderboard.ts`
+
+The leaderboard reads **real on-chain data** directly from the AgentVaultV2 smart contract. No trading server or wallet connection is required -- it uses a standalone viem `publicClient` to make RPC calls.
+
+### How It Works
+
+```
+1. Fetch all agents from Supabase (metadata only: name, avatar, generation, etc.)
+       |
+       v
+2. For each agent, convert UUID to bytes32:
+   UUID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+   bytes32: "0xa1b2c3d4e5f678900abcdef12345678900000000000000000000000000000000"
+       |
+       v
+3. Call getAgentTotalBalance(bytes32) on AgentVaultV2 contract
+   via viem createPublicClient + Monad RPC
+       |
+       v
+4. Parse uint256 result as USDC (6 decimals)
+   Raw: 150000000n  -->  $150.00 USDC
+       |
+       v
+5. Calculate P&L: (currentBalance - initialDeposit) / initialDeposit * 100
+       |
+       v
+6. Sort by vault balance and display
+```
+
+### Why Balances May Show $0.00
+
+If the leaderboard shows `$0.00 USDC` for an agent, it means:
+- No user has deposited USDC into that agent's vault slot yet
+- The agent exists in Supabase (metadata) but has no funds on-chain
+- To fund an agent: go to Trading page → select the agent → click "Fund Agent" → deposit USDC
+
+### UUID to bytes32 Conversion
+
+Both the frontend and trading server use the same conversion:
+```javascript
+function uuidToBytes32(uuid) {
+  const hex = uuid.replace(/-/g, '');  // Remove dashes
+  return '0x' + hex.padEnd(64, '0');   // Pad to 32 bytes
+}
+```
 
 ## Technology Stack
 
@@ -824,14 +1043,32 @@ This ensures all routes are handled by React Router instead of returning 404.
 
 ## Environment Variables
 
-The following environment variables are required:
+The `.env` file in the project root contains all configuration. Here is the full list:
 
-| Variable | Description |
-|---|---|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous API key |
+### Frontend Variables (prefixed with `VITE_`)
 
-PandaScore API token is configured directly in `src/lib/pandaScore.ts`. CoinGecko uses the free public API and requires no key.
+| Variable | Description | Example |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL | `https://xxxxx.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anonymous API key | `eyJhbG...` |
+| `VITE_SUPABASE_PROJECT_ID` | Supabase project ID | `sopogtmlsfwyowjqcrse` |
+| `VITE_TRADING_SERVER_URL` | Trading server URL (optional, defaults to VPS) | `http://96.30.205.215:3001` |
+| `VITE_ETHERSCAN_API_KEY` | Etherscan API key for transaction history | `WIKC9J5AHF...` |
+
+### Server Variables (trading server only)
+
+| Variable | Description | Example |
+|---|---|---|
+| `TRADING_WALLET_PRIVATE_KEY` | Operator wallet private key (executes trades) | `0x9799cf3d...` |
+| `MONAD_RPC_URL` | Monad Testnet RPC endpoint | `https://testnet-rpc.monad.xyz` |
+
+### API Keys (configured in source)
+
+| API | Where Configured | Notes |
+|---|---|---|
+| PandaScore | `src/lib/pandaScore.ts` | Token hardcoded in source |
+| CoinGecko | N/A | Free public API, no key needed |
+| TradingView | N/A | Widget-based, no key needed |
 
 ---
 
