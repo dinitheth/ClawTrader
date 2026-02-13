@@ -24,7 +24,7 @@ cache/
 out/
 
 # ── Foundry Git Submodule Libraries (installed via forge install) ─
-lib/
+/lib/
 contracts/lib/
 
 # ── Lock Files (keep package.json, skip binary/large locks) ──────
