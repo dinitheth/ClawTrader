@@ -12,9 +12,9 @@ interface LatestDecisionCardProps {
 export function LatestDecisionCard({ decision, agentName, timestamp }: LatestDecisionCardProps) {
   const getActionColor = (action: string) => {
     switch (action) {
-      case 'BUY': return 'bg-accent/20 text-accent border-accent/50';
-      case 'SELL': return 'bg-destructive/20 text-destructive border-destructive/50';
-      default: return 'bg-muted text-muted-foreground border-border';
+      case 'BUY': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50';
+      case 'SELL': return 'bg-red-500/20 text-red-400 border-red-500/50';
+      default: return 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40';
     }
   };
 
@@ -27,9 +27,9 @@ export function LatestDecisionCard({ decision, agentName, timestamp }: LatestDec
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 70) return 'text-accent';
-    if (confidence >= 50) return 'text-yellow-500';
-    return 'text-destructive';
+    if (confidence >= 70) return 'text-emerald-400';
+    if (confidence >= 50) return 'text-yellow-400';
+    return 'text-red-400';
   };
 
   if (!decision) {

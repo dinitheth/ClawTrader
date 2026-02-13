@@ -64,9 +64,8 @@ export function HeroSection() {
       if (!rect) return;
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-      ctx.scale(dpr, dpr);
+      // Reset transform before applying DPR scale to prevent accumulation
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
@@ -233,18 +232,25 @@ export function HeroSection() {
       {/* Animated canvas background */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 -z-10"
-        style={{ pointerEvents: 'none' }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
       />
 
       {/* Gradient overlays */}
-      <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0" style={{ zIndex: 1, pointerEvents: 'none' }}>
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/8 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
       </div>
 
-      <div className="container mx-auto px-4 py-16 md:py-24">
+      <div className="container mx-auto px-4 py-16 md:py-24 relative" style={{ zIndex: 2 }}>
         <div className="max-w-4xl mx-auto text-center space-y-8">
           {/* Badge */}
           <div className="flex justify-center">
