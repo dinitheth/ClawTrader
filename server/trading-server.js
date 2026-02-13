@@ -69,10 +69,11 @@ function uuidToBytes32(uuid) {
  * - Current price movement
  * - Agent's token holdings
  * - Agent DNA traits
+ * - USDC balance available for buying
  */
 function makeSmartDecision(marketData, positions, agentDNA) {
     const { priceChange24h, priceChange7d, currentPrice, high24h, low24h } = marketData;
-    const { hasPosition, tokenAmount, tokenValueUSD } = positions;
+    const { hasPosition, tokenAmount, tokenValueUSD, usdcBalance } = positions;
 
     // Calculate price position in 24h range (0-100%)
     const range24h = high24h - low24h;
@@ -83,88 +84,96 @@ function makeSmartDecision(marketData, positions, agentDNA) {
     const riskFactor = (agentDNA?.riskTolerance || 50) / 100;
     const contrarianFactor = (agentDNA?.contrarianBias || 50) / 100;
 
-    // Thresholds adjusted by DNA - MORE AGGRESSIVE
-    const buyThreshold = -1 + (contrarianFactor * 1); // Buy on smaller dips (-1% to 0%)
-    const sellThreshold = 2 - (aggressionFactor * 1);  // Sell at smaller profits (1% to 2%)
-    const pricePositionBuyThreshold = 45 + (contrarianFactor * 15); // Buy when below 45-60% of range
-    const pricePositionSellThreshold = 55 - (aggressionFactor * 10); // Sell when above 45-55% of range
+    // Trade aggressively to actually make meaningful trades
+    const buyThreshold = 0.5 + (contrarianFactor * 1); // Buy even on small dips (0.5% to 1.5%)
+    const sellThreshold = 1 + (1 - aggressionFactor) * 2;  // Sell at 1-3% profit
+    const pricePositionBuyThreshold = 65 + (contrarianFactor * 10); // Buy when below 65-75% of range
+    const pricePositionSellThreshold = 70 - (aggressionFactor * 15); // Sell when above 55-70% of range
+
+    // Minimum trade amounts to prevent micro-trades
+    const MIN_BUY_USDC = 5; // Never buy less than $5
+    const MIN_SELL_VALUE_USD = 1; // Don't bother selling less than $1 worth
 
     let action = 'HOLD';
     let confidence = 50;
     let reasoning = '';
     let suggestedAmount = 0;
 
-    // RULE 1: Can only SELL if we have tokens
-    if (!hasPosition || tokenAmount === 0) {
-        // No position - can only BUY or HOLD
+    // RULE 1: Can only SELL if we have tokens worth at least MIN_SELL_VALUE
+    if (!hasPosition || tokenAmount === 0 || tokenValueUSD < MIN_SELL_VALUE_USD) {
+        // No meaningful position - focus on BUY or HOLD
 
-        // BUY CONDITIONS:
-        // 1. Price dropped significantly (buy the dip)
-        // 2. Price is in the lower part of 24h range
-        // 3. 7-day trend suggests recovery potential
-
-        if (priceChange24h <= buyThreshold) {
+        if (usdcBalance < MIN_BUY_USDC) {
+            action = 'HOLD';
+            confidence = 50;
+            reasoning = `Insufficient USDC balance ($${usdcBalance.toFixed(2)}) for meaningful trade. Minimum: $${MIN_BUY_USDC}`;
+            suggestedAmount = 0;
+        } else if (priceChange24h <= -buyThreshold) {
             action = 'BUY';
-            confidence = Math.min(90, 60 + Math.abs(priceChange24h) * 5);
-            reasoning = `Price dipped ${priceChange24h.toFixed(2)}% in 24h - buying the dip opportunity`;
-            suggestedAmount = 10 + (aggressionFactor * 20); // 10-30% based on aggression
+            confidence = Math.min(90, 65 + Math.abs(priceChange24h) * 5);
+            reasoning = `Price dipped ${priceChange24h.toFixed(2)}% in 24h - buying the dip with $${(usdcBalance * 0.25).toFixed(0)}`;
+            suggestedAmount = 20 + (aggressionFactor * 20); // 20-40% of balance
         } else if (pricePosition < pricePositionBuyThreshold) {
             action = 'BUY';
-            confidence = Math.min(80, 55 + (pricePositionBuyThreshold - pricePosition));
-            reasoning = `Price at ${pricePosition.toFixed(0)}% of 24h range (near daily low) - good entry point`;
-            suggestedAmount = 10 + (aggressionFactor * 15); // 10-25%
-        } else if (priceChange7d && priceChange7d < -10 && priceChange24h > 0) {
+            confidence = Math.min(85, 60 + (pricePositionBuyThreshold - pricePosition));
+            reasoning = `Price at ${pricePosition.toFixed(0)}% of 24h range - good entry point`;
+            suggestedAmount = 15 + (aggressionFactor * 20); // 15-35%
+        } else if (priceChange7d && priceChange7d < -5 && priceChange24h > 0) {
             action = 'BUY';
             confidence = 65;
-            reasoning = `7-day drop of ${priceChange7d.toFixed(1)}% but 24h recovery starting - accumulation opportunity`;
-            suggestedAmount = 15;
+            reasoning = `7-day drop of ${priceChange7d.toFixed(1)}% but recovering today - accumulation opportunity`;
+            suggestedAmount = 20;
         } else {
-            action = 'HOLD';
-            confidence = 60;
-            reasoning = `No position held. Price stable at ${pricePosition.toFixed(0)}% of daily range - waiting for better entry`;
-            suggestedAmount = 0;
+            // Market is neutral/high - still consider buying with lower allocation
+            if (Math.random() < 0.4 * aggressionFactor) {
+                action = 'BUY';
+                confidence = 55;
+                reasoning = `Taking entry position at ${pricePosition.toFixed(0)}% of range. Allocating conservatively.`;
+                suggestedAmount = 10 + (aggressionFactor * 10); // 10-20%
+            } else {
+                action = 'HOLD';
+                confidence = 60;
+                reasoning = `No position. Price at ${pricePosition.toFixed(0)}% of daily range - waiting for better entry`;
+                suggestedAmount = 0;
+            }
         }
     } else {
-        // We HAVE a position - can BUY more, SELL, or HOLD
-
-        // SELL CONDITIONS:
-        // 1. Price increased significantly (take profit)
-        // 2. Price is at the high of 24h range
+        // We HAVE a meaningful position - can BUY more, SELL, or HOLD
 
         if (priceChange24h >= sellThreshold) {
             action = 'SELL';
-            confidence = Math.min(90, 60 + priceChange24h * 3);
-            reasoning = `Price up ${priceChange24h.toFixed(2)}% in 24h - taking profits on ${tokenAmount.toFixed(6)} tokens`;
+            confidence = Math.min(90, 65 + priceChange24h * 3);
+            reasoning = `Price up ${priceChange24h.toFixed(2)}% - taking profits on $${tokenValueUSD.toFixed(2)} position`;
             suggestedAmount = 50 + (aggressionFactor * 50); // Sell 50-100% of position
-        } else if (pricePosition > pricePositionSellThreshold) {
+        } else if (pricePosition > pricePositionSellThreshold && priceChange24h > 0.5) {
             action = 'SELL';
-            confidence = Math.min(85, 55 + (pricePosition - pricePositionSellThreshold));
-            reasoning = `Price at ${pricePosition.toFixed(0)}% of 24h range (near daily high) - selling to lock profits`;
-            suggestedAmount = 30 + (aggressionFactor * 40); // Sell 30-70%
+            confidence = Math.min(85, 60 + (pricePosition - pricePositionSellThreshold));
+            reasoning = `Price at ${pricePosition.toFixed(0)}% of range (near high) - locking $${tokenValueUSD.toFixed(2)} in profits`;
+            suggestedAmount = 40 + (aggressionFactor * 30); // Sell 40-70%
         } else if (priceChange24h < -8) {
-            // Stop loss - significant drop while holding
+            // Stop loss
             action = 'SELL';
-            confidence = 75;
-            reasoning = `Price dropped ${Math.abs(priceChange24h).toFixed(2)}% - cutting losses`;
-            suggestedAmount = 100; // Sell all
-        } else if (priceChange24h <= buyThreshold * 1.5) {
-            // DCA - buy more on bigger dip
+            confidence = 80;
+            reasoning = `Price dropped ${Math.abs(priceChange24h).toFixed(2)}% - cutting losses on $${tokenValueUSD.toFixed(2)}`;
+            suggestedAmount = 100;
+        } else if (priceChange24h <= -buyThreshold * 1.5 && usdcBalance >= MIN_BUY_USDC) {
+            // DCA opportunity
             action = 'BUY';
             confidence = 65;
-            reasoning = `Already holding ${tokenAmount.toFixed(6)} tokens, but price dipped ${priceChange24h.toFixed(2)}% - DCA opportunity`;
-            suggestedAmount = 10; // Small additional buy
+            reasoning = `DCA: holding $${tokenValueUSD.toFixed(2)}, buying more on ${priceChange24h.toFixed(2)}% dip`;
+            suggestedAmount = 15;
         } else {
-            // Instead of just HOLD, make a small trade to keep activity going
-            // Random factor - 30% chance to do something even in neutral market
-            if (Math.random() < 0.3) {
+            // Neutral market with position
+            if (Math.random() < 0.25) {
                 action = priceChange24h > 0 ? 'SELL' : 'BUY';
-                confidence = 45;
-                reasoning = `Market neutral but taking small ${action} action. Holding ${tokenAmount.toFixed(4)} tokens.`;
-                suggestedAmount = 10; // Small trade
+                confidence = 50;
+                const amt = action === 'SELL' ? `${tokenValueUSD.toFixed(2)} position` : `$${(usdcBalance * 0.1).toFixed(0)}`;
+                reasoning = `Market neutral, small ${action} to rebalance. ${amt}`;
+                suggestedAmount = action === 'SELL' ? 20 : 10;
             } else {
                 action = 'HOLD';
                 confidence = 55;
-                reasoning = `Holding ${tokenAmount.toFixed(4)} tokens ($${tokenValueUSD.toFixed(2)}). Waiting for clearer signals.`;
+                reasoning = `Holding $${tokenValueUSD.toFixed(2)} in tokens. Waiting for clearer signals.`;
                 suggestedAmount = 0;
             }
         }
@@ -286,47 +295,60 @@ app.post('/api/smart-trade', async (req, res) => {
             if (decision.action === 'BUY' && positions.usdcBalance > 0) {
                 // Calculate buy amount
                 const buyAmount = positions.usdcBalance * (decision.suggestedAmount / 100);
-                const amountIn = ethers.parseUnits(buyAmount.toFixed(6), 6);
 
-                console.log(`🛒 Executing BUY: $${buyAmount.toFixed(2)} USDC → ${tokenInfo.symbol}`);
+                // Enforce minimum buy amount to prevent micro-trades
+                if (buyAmount < 5) {
+                    console.log(`⚠️ Buy amount too small ($${buyAmount.toFixed(2)}). Skipping.`);
+                } else {
+                    const amountIn = ethers.parseUnits(buyAmount.toFixed(6), 6);
 
-                try {
-                    const buyTx = await agentVault.executeBuy(
-                        agentIdBytes32,
-                        userAddress,
-                        tokenInfo.address,
-                        amountIn,
-                        0
-                    );
-                    const receipt = await buyTx.wait();
-                    txHash = receipt.hash;
-                    console.log(`✅ BUY executed! Tx: ${txHash}`);
-                } catch (buyError) {
-                    console.error(`❌ BUY failed:`, buyError.message);
+                    console.log(`🛒 Executing BUY: $${buyAmount.toFixed(2)} USDC → ${tokenInfo.symbol}`);
+
+                    try {
+                        const buyTx = await agentVault.executeBuy(
+                            agentIdBytes32,
+                            userAddress,
+                            tokenInfo.address,
+                            amountIn,
+                            0
+                        );
+                        const receipt = await buyTx.wait();
+                        txHash = receipt.hash;
+                        console.log(`✅ BUY executed! Tx: ${txHash}`);
+                    } catch (buyError) {
+                        console.error(`❌ BUY failed:`, buyError.message);
+                    }
                 }
 
             } else if (decision.action === 'SELL' && positions.hasPosition) {
                 // Calculate sell amount
                 const sellPercent = decision.suggestedAmount / 100;
                 const sellAmount = positions.tokenAmount * sellPercent;
-                const amountIn = ethers.parseUnits(sellAmount.toFixed(tokenInfo.decimals), tokenInfo.decimals);
+                const sellValueUSD = sellAmount * marketData.currentPrice;
 
-                console.log(`💱 Executing SELL: ${sellAmount.toFixed(8)} ${tokenInfo.symbol} → USDC`);
+                // Enforce minimum sell value
+                if (sellValueUSD < 1) {
+                    console.log(`⚠️ Sell value too small ($${sellValueUSD.toFixed(2)}). Skipping.`);
+                } else {
+                    const amountIn = ethers.parseUnits(sellAmount.toFixed(tokenInfo.decimals), tokenInfo.decimals);
 
-                try {
-                    const sellTx = await agentVault.executeSell(
-                        agentIdBytes32,
-                        userAddress,
-                        tokenInfo.address,
-                        amountIn,
-                        0
-                    );
-                    const receipt = await sellTx.wait();
-                    txHash = receipt.hash;
-                    tokensTraded = sellAmount;
-                    console.log(`✅ SELL executed! Tx: ${txHash}`);
-                } catch (sellError) {
-                    console.error(`❌ SELL failed:`, sellError.message);
+                    console.log(`💱 Executing SELL: ${sellAmount.toFixed(8)} ${tokenInfo.symbol} ($${sellValueUSD.toFixed(2)}) → USDC`);
+
+                    try {
+                        const sellTx = await agentVault.executeSell(
+                            agentIdBytes32,
+                            userAddress,
+                            tokenInfo.address,
+                            amountIn,
+                            0
+                        );
+                        const receipt = await sellTx.wait();
+                        txHash = receipt.hash;
+                        tokensTraded = sellAmount;
+                        console.log(`✅ SELL executed! Tx: ${txHash}`);
+                    } catch (sellError) {
+                        console.error(`❌ SELL failed:`, sellError.message);
+                    }
                 }
             }
 
