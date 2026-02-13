@@ -155,20 +155,34 @@ async function fetchPandaScore<T>(endpoint: string, params: Record<string, strin
 
     // Build the full PandaScore URL first
     const pandaUrl = `${BASE_URL}${endpoint}?${searchParams}`;
-    // In production, wrap with CORS proxy since PandaScore doesn't send CORS headers
-    const url = isLocalhost ? pandaUrl : `https://corsproxy.io/?url=${encodeURIComponent(pandaUrl)}`;
 
-    const response = await fetch(url);
-
-    if (!response.ok) {
-        if (response.status === 429) {
-            console.warn('⚠️ PandaScore rate limit hit! Waiting...');
-            throw new Error('Rate limit exceeded. Please try again in a moment.');
+    let data;
+    if (isLocalhost) {
+        // Direct fetch on localhost
+        const response = await fetch(pandaUrl);
+        if (!response.ok) {
+            if (response.status === 429) {
+                console.warn('⚠️ PandaScore rate limit hit! Waiting...');
+                throw new Error('Rate limit exceeded. Please try again in a moment.');
+            }
+            throw new Error(`PandaScore API error: ${response.status}`);
         }
-        throw new Error(`PandaScore API error: ${response.status}`);
+        data = await response.json();
+    } else {
+        // Production: Use robust multi-proxy fetcher
+        try {
+            const { fetchWithProxy } = await import('@/lib/proxyFetch');
+            const response = await fetchWithProxy(pandaUrl);
+            data = await response.json();
+        } catch (error: any) {
+            console.error('Proxy fetch failed:', error);
+            if (error.message.includes('429')) {
+                throw new Error('Rate limit exceeded. Please try again in a moment.');
+            }
+            throw new Error(`Failed to fetch match data: ${error.message}`);
+        }
     }
 
-    const data = await response.json();
     setCache(cacheKey, data);
     return data;
 }

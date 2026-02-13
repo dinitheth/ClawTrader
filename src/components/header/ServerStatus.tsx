@@ -20,31 +20,30 @@ export function ServerStatus() {
         const healthUrl = `${url}/health`;
 
         // On HTTPS pages, HTTP requests get blocked (mixed content).
-        // Use a CORS proxy to make the actual request server-side — this gives REAL status.
+        // Use our robust proxy fetcher to check status
         const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
         const isHttpUrl = healthUrl.startsWith('http://');
-        const fetchUrl = (isHttpsPage && isHttpUrl)
-            ? `https://corsproxy.io/?url=${encodeURIComponent(healthUrl)}`
-            : healthUrl;
 
         try {
-            const response = await fetch(fetchUrl, {
-                method: 'GET',
-                signal: AbortSignal.timeout(8000) // 8 second timeout (proxy adds latency)
-            });
+            let response;
+            if (isHttpsPage && isHttpUrl) {
+                const { fetchWithProxy } = await import('@/lib/proxyFetch');
+                response = await fetchWithProxy(healthUrl);
+            } else {
+                response = await fetch(healthUrl, { signal: AbortSignal.timeout(5000) });
+            }
 
             if (response.ok) {
                 try {
                     const data = await response.json();
                     return { status: 'online', timestamp: data.timestamp, uptime: data.uptime };
                 } catch {
-                    // Response was OK but not JSON — server is still responding
                     return { status: 'online' };
                 }
             }
             return { status: 'offline' };
         } catch (error) {
-            return { status: 'offline' };
+            return { status: 'offline' }; // Trading server is genuinely offline currently, this catches it
         }
     };
 
