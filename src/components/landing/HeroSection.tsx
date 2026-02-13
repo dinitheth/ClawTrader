@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Play, ArrowRight, Sparkles } from 'lucide-react';
@@ -11,8 +11,22 @@ interface LiveStats {
   volume: number;
 }
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  opacity: number;
+  pulseSpeed: number;
+  pulsePhase: number;
+}
+
 export function HeroSection() {
   const navigate = useNavigate();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animFrameRef = useRef<number>(0);
+  const particlesRef = useRef<Particle[]>([]);
   const [stats, setStats] = useState<LiveStats>({ agents: 0, matches: 0, volume: 0 });
 
   useEffect(() => {
@@ -37,6 +51,177 @@ export function HeroSection() {
     fetchStats();
   }, []);
 
+  // Canvas animation
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement?.getBoundingClientRect();
+      if (!rect) return;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Initialize particles
+    const w = () => canvas.width / (window.devicePixelRatio || 1);
+    const h = () => canvas.height / (window.devicePixelRatio || 1);
+
+    const PARTICLE_COUNT = 40;
+    particlesRef.current = Array.from({ length: PARTICLE_COUNT }, () => ({
+      x: Math.random() * w(),
+      y: Math.random() * h(),
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.3,
+      size: Math.random() * 2 + 1,
+      opacity: Math.random() * 0.5 + 0.1,
+      pulseSpeed: Math.random() * 0.02 + 0.01,
+      pulsePhase: Math.random() * Math.PI * 2,
+    }));
+
+    let time = 0;
+
+    const animate = () => {
+      const cw = w();
+      const ch = h();
+      ctx.clearRect(0, 0, cw, ch);
+      time += 0.01;
+
+      // --- Layer 1: Subtle grid ---
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.03)';
+      ctx.lineWidth = 0.5;
+      const gridSize = 60;
+      for (let x = 0; x < cw; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, ch);
+        ctx.stroke();
+      }
+      for (let y = 0; y < ch; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(cw, y);
+        ctx.stroke();
+      }
+
+      // --- Layer 2: Trading wave (candlestick-style flowing line) ---
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.08)';
+      ctx.lineWidth = 1.5;
+      const waveY = ch * 0.55;
+      for (let x = 0; x < cw; x += 2) {
+        const y = waveY
+          + Math.sin(x * 0.008 + time * 0.8) * 30
+          + Math.sin(x * 0.015 + time * 1.2) * 15
+          + Math.sin(x * 0.003 + time * 0.3) * 50;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Second wave (faded)
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.04)';
+      for (let x = 0; x < cw; x += 2) {
+        const y = waveY + 40
+          + Math.sin(x * 0.006 + time * 0.5 + 1) * 25
+          + Math.sin(x * 0.012 + time * 0.9 + 2) * 20;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // --- Layer 3: Particles + connections ---
+      const particles = particlesRef.current;
+
+      // Update particles
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.pulsePhase += p.pulseSpeed;
+
+        // Wrap around
+        if (p.x < -10) p.x = cw + 10;
+        if (p.x > cw + 10) p.x = -10;
+        if (p.y < -10) p.y = ch + 10;
+        if (p.y > ch + 10) p.y = -10;
+      }
+
+      // Draw connections
+      const CONNECTION_DIST = 120;
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < CONNECTION_DIST) {
+            const alpha = (1 - dist / CONNECTION_DIST) * 0.15;
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(59, 130, 246, ${alpha})`;
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Draw particles
+      for (const p of particles) {
+        const pulse = Math.sin(p.pulsePhase) * 0.3 + 0.7;
+        const alpha = p.opacity * pulse;
+
+        // Glow
+        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 4);
+        gradient.addColorStop(0, `rgba(59, 130, 246, ${alpha * 0.6})`);
+        gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Core dot
+        ctx.fillStyle = `rgba(147, 197, 253, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // --- Layer 4: Floating data points (small rising dots) ---
+      for (let i = 0; i < 6; i++) {
+        const x = (cw * (i + 0.5)) / 6;
+        const yBase = ch * 0.7;
+        const yOffset = ((time * 30 + i * 100) % (ch * 0.5));
+        const y = yBase - yOffset;
+        const fadeIn = Math.min(yOffset / 50, 1);
+        const fadeOut = Math.max(1 - yOffset / (ch * 0.5), 0);
+        const alpha = fadeIn * fadeOut * 0.3;
+
+        ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x + Math.sin(time + i) * 10, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      animFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animFrameRef.current);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -45,11 +230,18 @@ export function HeroSection() {
 
   return (
     <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
-      {/* Subtle gradient background */}
+      {/* Animated canvas background */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 -z-10"
+        style={{ pointerEvents: 'none' }}
+      />
+
+      {/* Gradient overlays */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/8 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
       </div>
 
       <div className="container mx-auto px-4 py-16 md:py-24">
