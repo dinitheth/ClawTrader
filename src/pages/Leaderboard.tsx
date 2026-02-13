@@ -4,21 +4,21 @@ import AgentLeaderRow from "@/components/arena/AgentLeaderRow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, TrendingUp, Flame, Loader2, RefreshCw } from "lucide-react";
-import { agentService } from '@/lib/api';
+import { Trophy, TrendingUp, Wallet, Loader2, RefreshCw } from "lucide-react";
 import { Button } from '@/components/ui/button';
+import { fetchOnChainLeaderboard, type OnChainAgentData } from '@/lib/onchain-leaderboard';
 
 const Leaderboard = () => {
-  const [agents, setAgents] = useState<any[]>([]);
+  const [agents, setAgents] = useState<OnChainAgentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadAgents = async () => {
     setIsLoading(true);
     try {
-      const data = await agentService.getAll();
+      const data = await fetchOnChainLeaderboard();
       setAgents(data);
     } catch (error) {
-      console.error('Error loading agents:', error);
+      console.error('Error loading leaderboard:', error);
     } finally {
       setIsLoading(false);
     }
@@ -31,34 +31,25 @@ const Leaderboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const formatAgentForRow = (agent: any, index: number) => ({
+  const formatAgentForRow = (agent: OnChainAgentData, index: number) => ({
     rank: index + 1,
     name: agent.name,
     avatar: agent.avatar,
     generation: agent.generation,
-    totalWinnings: Number(agent.total_won || 0),
-    winRate: agent.total_matches
-      ? Math.round((agent.wins / agent.total_matches) * 100)
-      : 0,
-    matches: agent.total_matches || 0,
-    recentPnL: Number(agent.total_pnl || 0),
+    vaultBalance: agent.vaultBalanceUSDC,
+    totalTrades: agent.totalTrades,
+    pnlPercent: agent.pnlPercent,
   });
 
-  const sortedByWinnings = [...agents].sort((a, b) => Number(b.total_won || 0) - Number(a.total_won || 0));
-  const sortedByPnL = [...agents].sort((a, b) => Number(b.total_pnl || 0) - Number(a.total_pnl || 0));
-  const sortedByStreak = [...agents].sort((a, b) => (b.current_streak || 0) - (a.current_streak || 0));
-  const sortedByWinRate = [...agents]
-    .filter(a => (a.total_matches || 0) >= 3)
-    .sort((a, b) => {
-      const rateA = a.total_matches ? (a.wins / a.total_matches) : 0;
-      const rateB = b.total_matches ? (b.wins / b.total_matches) : 0;
-      return rateB - rateA;
-    });
+  // Different sort modes
+  const sortedByBalance = [...agents].sort((a, b) => b.vaultBalanceUSDC - a.vaultBalanceUSDC);
+  const sortedByPnL = [...agents].sort((a, b) => b.pnlPercent - a.pnlPercent);
+  const sortedByTrades = [...agents].sort((a, b) => b.totalTrades - a.totalTrades);
 
   // Compute summary stats
-  const totalMatches = agents.reduce((sum, a) => sum + (a.total_matches || 0), 0);
-  const totalVolume = agents.reduce((sum, a) => sum + Number(a.total_wagered || 0), 0);
-  const topAgent = sortedByWinnings[0];
+  const totalVaultValue = agents.reduce((sum, a) => sum + a.vaultBalanceUSDC, 0);
+  const totalTrades = agents.reduce((sum, a) => sum + a.totalTrades, 0);
+  const topAgent = sortedByBalance[0];
 
   return (
     <Layout>
@@ -66,13 +57,13 @@ const Leaderboard = () => {
         {/* Header */}
         <section className="py-8 text-center space-y-4">
           <div className="flex items-center justify-center gap-3">
-            <Trophy className="w-8 h-8 text-accent" />
+            <Trophy className="w-8 h-8 text-primary" />
             <h1 className="text-3xl md:text-4xl font-display font-bold">
               LEADERBOARD
             </h1>
           </div>
           <p className="text-muted-foreground">
-            The most profitable AI traders in the arena
+            Real-time on-chain trading performance
           </p>
         </section>
 
@@ -86,16 +77,16 @@ const Leaderboard = () => {
           </Card>
           <Card className="border-border/50 bg-muted/20">
             <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Matches</p>
-              <p className="text-2xl font-bold">{Math.floor(totalMatches / 2)}</p>
+              <p className="text-xs text-muted-foreground mb-1">Total Trades</p>
+              <p className="text-2xl font-bold">{totalTrades}</p>
             </CardContent>
           </Card>
           <Card className="border-border/50 bg-muted/20">
             <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Volume</p>
+              <p className="text-xs text-muted-foreground mb-1">Total Vault Value</p>
               <p className="text-2xl font-bold">
-                {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}K` : totalVolume.toFixed(0)}
-                <span className="text-sm text-muted-foreground ml-1">CLAW</span>
+                ${totalVaultValue >= 1000 ? `${(totalVaultValue / 1000).toFixed(1)}K` : totalVaultValue.toFixed(2)}
+                <span className="text-sm text-muted-foreground ml-1">USDC</span>
               </p>
             </CardContent>
           </Card>
@@ -108,21 +99,21 @@ const Leaderboard = () => {
         </div>
 
         {/* Leaderboard Tabs */}
-        <Tabs defaultValue="all-time" className="space-y-6">
+        <Tabs defaultValue="by-balance" className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex-1" />
             <TabsList className="bg-muted/50">
-              <TabsTrigger value="all-time" className="gap-2">
-                <Trophy className="w-4 h-4" />
-                All Time
+              <TabsTrigger value="by-balance" className="gap-2">
+                <Wallet className="w-4 h-4" />
+                By Vault
               </TabsTrigger>
-              <TabsTrigger value="pnl" className="gap-2">
+              <TabsTrigger value="by-pnl" className="gap-2">
                 <TrendingUp className="w-4 h-4" />
                 By P&L
               </TabsTrigger>
-              <TabsTrigger value="hot" className="gap-2">
-                <Flame className="w-4 h-4" />
-                Hot Streak
+              <TabsTrigger value="by-trades" className="gap-2">
+                <Trophy className="w-4 h-4" />
+                By Trades
               </TabsTrigger>
             </TabsList>
             <div className="flex-1 flex justify-end">
@@ -148,37 +139,37 @@ const Leaderboard = () => {
                 <Trophy className="w-16 h-16 text-muted-foreground mb-4" />
                 <h3 className="font-display font-semibold text-xl mb-2">No Agents Yet</h3>
                 <p className="text-muted-foreground">
-                  Create agents and compete to appear on the leaderboard!
+                  Create agents and fund them to appear on the leaderboard!
                 </p>
               </CardContent>
             </Card>
           ) : (
             <>
-              <TabsContent value="all-time">
+              <TabsContent value="by-balance">
                 <Card className="card-glow border-border">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-display">All Time Rankings</CardTitle>
+                      <CardTitle className="text-lg font-display">Ranked by Vault Balance</CardTitle>
                       <Badge variant="outline" className="text-muted-foreground">
-                        By Total Winnings
+                        On-Chain USDC
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {sortedByWinnings.map((agent, index) => (
+                    {sortedByBalance.map((agent, index) => (
                       <AgentLeaderRow key={agent.id} {...formatAgentForRow(agent, index)} />
                     ))}
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="pnl">
+              <TabsContent value="by-pnl">
                 <Card className="card-glow border-border">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-display">Top Performers by P&L</CardTitle>
+                      <CardTitle className="text-lg font-display">Ranked by P&L</CardTitle>
                       <Badge variant="outline" className="text-muted-foreground">
-                        Highest Returns
+                        Trading Returns
                       </Badge>
                     </div>
                   </CardHeader>
@@ -190,26 +181,20 @@ const Leaderboard = () => {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="hot">
+              <TabsContent value="by-trades">
                 <Card className="card-glow border-border">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-display">Hot Streak Leaders</CardTitle>
-                      <Badge variant="outline" className="text-destructive border-destructive/50">
-                        Current Win Streaks
+                      <CardTitle className="text-lg font-display">Most Active Traders</CardTitle>
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Trade Count
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {sortedByStreak.filter(a => (a.current_streak || 0) > 0).length > 0 ? (
-                      sortedByStreak.filter(a => (a.current_streak || 0) > 0).map((agent, index) => (
-                        <AgentLeaderRow key={agent.id} {...formatAgentForRow(agent, index)} />
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No agents currently on a win streak. Start competing!
-                      </div>
-                    )}
+                    {sortedByTrades.map((agent, index) => (
+                      <AgentLeaderRow key={agent.id} {...formatAgentForRow(agent, index)} />
+                    ))}
                   </CardContent>
                 </Card>
               </TabsContent>

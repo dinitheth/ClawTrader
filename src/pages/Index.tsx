@@ -16,7 +16,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useState, useEffect } from 'react';
-import { agentService, matchService } from '@/lib/api';
+import { matchService } from '@/lib/api';
+import { fetchOnChainLeaderboard, type OnChainAgentData } from '@/lib/onchain-leaderboard';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { parseError, formatErrorForDisplay } from '@/lib/errors';
@@ -24,7 +25,7 @@ import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
   const navigate = useNavigate();
-  const [agents, setAgents] = useState<any[]>([]);
+  const [agents, setAgents] = useState<OnChainAgentData[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,11 +54,11 @@ const Index = () => {
 
     try {
       const [agentsData, matchesData] = await Promise.all([
-        agentService.getLeaderboard(5),
+        fetchOnChainLeaderboard(),
         matchService.getRecent(4),
       ]);
 
-      setAgents(agentsData);
+      setAgents(agentsData.slice(0, 5)); // Top 5
       setMatches(matchesData);
     } catch (err) {
       const appError = parseError(err);
@@ -100,17 +101,14 @@ const Index = () => {
     };
   };
 
-  const formatAgentForRow = (agent: any, index: number) => ({
+  const formatAgentForRow = (agent: OnChainAgentData, index: number) => ({
     rank: index + 1,
     name: agent.name,
     avatar: agent.avatar,
     generation: agent.generation,
-    totalWinnings: Number(agent.total_won || 0),
-    winRate: agent.total_matches
-      ? Math.round((agent.wins / agent.total_matches) * 100)
-      : 0,
-    matches: agent.total_matches || 0,
-    recentPnL: Number(agent.total_pnl || 0),
+    vaultBalance: agent.vaultBalanceUSDC,
+    totalTrades: agent.totalTrades,
+    pnlPercent: agent.pnlPercent,
   });
 
   return (
@@ -194,7 +192,7 @@ const Index = () => {
             )}
           </div>
 
-          {/* Leaderboard Preview */}
+          {/* Top Traders (On-Chain) */}
           <div className="pt-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">

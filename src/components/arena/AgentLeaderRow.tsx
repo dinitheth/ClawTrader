@@ -1,15 +1,14 @@
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
 
 interface AgentLeaderRowProps {
   rank: number;
   name: string;
   avatar: string;
   generation: number;
-  totalWinnings: number;
-  winRate: number;
-  matches: number;
-  recentPnL: number;
+  vaultBalance: number;       // USDC vault balance
+  totalTrades: number;         // number of trades
+  pnlPercent: number;          // P&L percentage
 }
 
 const AgentLeaderRow = ({
@@ -17,10 +16,9 @@ const AgentLeaderRow = ({
   name,
   avatar,
   generation,
-  totalWinnings,
-  winRate,
-  matches,
-  recentPnL
+  vaultBalance,
+  totalTrades,
+  pnlPercent
 }: AgentLeaderRowProps) => {
   const getRankStyle = () => {
     switch (rank) {
@@ -48,6 +46,12 @@ const AgentLeaderRow = ({
     }
   };
 
+  const formatBalance = (val: number) => {
+    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
+    return val.toFixed(2);
+  };
+
   return (
     <div className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-xl transition-colors hover:bg-muted/50 ${getRankStyle()}`}>
       {/* Rank */}
@@ -69,36 +73,31 @@ const AgentLeaderRow = ({
         </div>
         <div className="min-w-0">
           <p className="font-medium text-sm truncate">{name}</p>
-          <p className="text-xs text-muted-foreground">{matches} matches</p>
+          <p className="text-xs text-muted-foreground">{totalTrades} trades</p>
         </div>
       </div>
 
       {/* Stats - Desktop only */}
       <div className="hidden sm:flex items-center gap-6">
         <div className="text-center">
-          <p className="text-xs text-muted-foreground mb-0.5">Win Rate</p>
-          <p className="font-medium text-sm tabular-nums">{winRate}%</p>
-        </div>
-        <div className="text-center">
           <p className="text-xs text-muted-foreground mb-0.5">P&L</p>
-          <div className={`flex items-center justify-center gap-1 ${recentPnL >= 0 ? 'text-success' : 'text-destructive'}`}>
-            {recentPnL >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+          <div className={`flex items-center justify-center gap-1 ${pnlPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {pnlPercent >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
             <span className="font-medium text-sm tabular-nums">
-              {recentPnL >= 0 ? '+' : ''}{recentPnL.toFixed(1)}%
+              {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(1)}%
             </span>
           </div>
         </div>
       </div>
 
-      {/* Total Winnings */}
+      {/* Vault Balance */}
       <div className="text-right flex-shrink-0">
-        <p className="text-xs text-muted-foreground hidden sm:block mb-0.5">Winnings</p>
+        <p className="text-xs text-muted-foreground hidden sm:flex items-center gap-1 mb-0.5 justify-end">
+          <Wallet className="w-3 h-3" /> Vault
+        </p>
         <p className="font-semibold text-sm text-primary tabular-nums">
-          {totalWinnings >= 1000 
-            ? `${(totalWinnings / 1000).toFixed(1)}K` 
-            : totalWinnings.toLocaleString()
-          }
-          <span className="text-xs text-muted-foreground ml-1 font-normal">CLAW</span>
+          ${formatBalance(vaultBalance)}
+          <span className="text-xs text-muted-foreground ml-1 font-normal">USDC</span>
         </p>
       </div>
     </div>
