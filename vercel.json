@@ -1,6 +1,18 @@
 {
     "rewrites": [
         {
+            "source": "/api/trading/:path*",
+            "destination": "http://96.30.205.215:3001/api/:path*"
+        },
+        {
+            "source": "/api/health/trading",
+            "destination": "http://96.30.205.215:3001/health"
+        },
+        {
+            "source": "/api/health/settlement",
+            "destination": "http://96.30.205.215:3002/health"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }

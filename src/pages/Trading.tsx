@@ -367,48 +367,45 @@ const Trading = () => {
 
         // Call trading server for AI decision + execution
         // This handles: market data, position tracking, smart decisions, and on-chain trades
-        const tradingServerUrl = import.meta.env.VITE_TRADING_SERVER_URL || 'http://96.30.205.215:3001';
-        const smartTradeUrl = `${tradingServerUrl}/api/smart-trade`;
+        const isVercel = window.location.hostname.includes('vercel.app');
         const isHttpsPage = window.location.protocol === 'https:';
-        const isHttpUrl = smartTradeUrl.startsWith('http://');
+        const tradingServerUrl = import.meta.env.VITE_TRADING_SERVER_URL || 'http://96.30.205.215:3001';
+
+        const tradeBody = JSON.stringify({
+          symbol: coinId,
+          agentId: selectedAgent.id,
+          userAddress: address,
+          agentDNA: {
+            aggression: selectedAgent.dna_aggression * 100,
+            riskTolerance: selectedAgent.dna_risk_tolerance * 100,
+            patternRecognition: selectedAgent.dna_pattern_recognition * 100,
+            contrarianBias: selectedAgent.dna_contrarian_bias * 100,
+            timingSensitivity: selectedAgent.dna_timing_sensitivity * 100,
+          },
+        });
 
         let response;
-        if (isHttpsPage && isHttpUrl) {
-          // Production: use proxy to avoid mixed content block
-          const { fetchWithProxy } = await import('@/lib/proxyFetch');
-          response = await fetchWithProxy(smartTradeUrl, {
+        if (isVercel) {
+          // Vercel: use same-origin rewrite proxy (no CORS, supports POST)
+          response = await fetch('/api/trading/smart-trade', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              symbol: coinId,
-              agentId: selectedAgent.id,
-              userAddress: address,
-              agentDNA: {
-                aggression: selectedAgent.dna_aggression * 100,
-                riskTolerance: selectedAgent.dna_risk_tolerance * 100,
-                patternRecognition: selectedAgent.dna_pattern_recognition * 100,
-                contrarianBias: selectedAgent.dna_contrarian_bias * 100,
-                timingSensitivity: selectedAgent.dna_timing_sensitivity * 100,
-              },
-            }),
+            body: tradeBody,
+          });
+        } else if (isHttpsPage) {
+          // Other HTTPS (Firebase): use CORS proxy for GET-compatible requests
+          const { fetchWithProxy } = await import('@/lib/proxyFetch');
+          response = await fetchWithProxy(`${tradingServerUrl}/api/smart-trade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: tradeBody,
           });
         } else {
           // Local dev: direct fetch
-          response = await fetch(smartTradeUrl, {
+          response = await fetch(`${tradingServerUrl}/api/smart-trade`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              symbol: coinId,
-              agentId: selectedAgent.id,
-              userAddress: address,
-              agentDNA: {
-                aggression: selectedAgent.dna_aggression * 100,
-                riskTolerance: selectedAgent.dna_risk_tolerance * 100,
-                patternRecognition: selectedAgent.dna_pattern_recognition * 100,
-                contrarianBias: selectedAgent.dna_contrarian_bias * 100,
-                timingSensitivity: selectedAgent.dna_timing_sensitivity * 100,
-              },
-            }),
+            body: tradeBody,
           });
         }
 

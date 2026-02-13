@@ -16,20 +16,22 @@ export function ServerStatus() {
     const [tradingStatus, setTradingStatus] = useState<ServerHealth>({ status: 'checking' });
     const [settlementStatus, setSettlementStatus] = useState<ServerHealth>({ status: 'checking' });
 
-    const checkHealth = async (url: string): Promise<ServerHealth> => {
-        const healthUrl = `${url}/health`;
-
-        // On HTTPS pages, HTTP requests get blocked (mixed content).
-        // Use our robust proxy fetcher to check status
+    const checkHealth = async (url: string, serverType: 'trading' | 'settlement'): Promise<ServerHealth> => {
+        const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
         const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
-        const isHttpUrl = healthUrl.startsWith('http://');
+        const healthUrl = `${url}/health`;
 
         try {
             let response;
-            if (isHttpsPage && isHttpUrl) {
+            if (isVercel) {
+                // Vercel: use same-origin rewrite (no CORS, fast)
+                response = await fetch(`/api/health/${serverType}`, { signal: AbortSignal.timeout(5000) });
+            } else if (isHttpsPage && healthUrl.startsWith('http://')) {
+                // Other HTTPS (Firebase): use CORS proxy
                 const { fetchWithProxy } = await import('@/lib/proxyFetch');
                 response = await fetchWithProxy(healthUrl);
             } else {
+                // Local dev: direct fetch
                 response = await fetch(healthUrl, { signal: AbortSignal.timeout(5000) });
             }
 
@@ -43,14 +45,14 @@ export function ServerStatus() {
             }
             return { status: 'offline' };
         } catch (error) {
-            return { status: 'offline' }; // Trading server is genuinely offline currently, this catches it
+            return { status: 'offline' };
         }
     };
 
     const checkAllServers = async () => {
         const [trading, settlement] = await Promise.all([
-            checkHealth(SERVER_URLS.trading),
-            checkHealth(SERVER_URLS.settlement)
+            checkHealth(SERVER_URLS.trading, 'trading'),
+            checkHealth(SERVER_URLS.settlement, 'settlement')
         ]);
 
         setTradingStatus(trading);
