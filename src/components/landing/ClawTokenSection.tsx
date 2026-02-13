@@ -124,14 +124,14 @@ export function ClawTokenSection() {
                                 Start Using CLAW
                                 <ArrowRight className="w-4 h-4" />
                             </Button>
-                            <a
-                                href={`https://testnet.monadexplorer.com/address/${contractAddress}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-muted-foreground hover:text-foreground transition-colors font-mono"
+                            <Button
+                                variant="outline"
+                                className="rounded-full px-6 gap-2"
+                                onClick={() => window.open('https://nad.fun/tokens/0xe722d482DdB694A5fF55eFefFa04DDbeD6bc7777', '_blank')}
                             >
-                                Contract: {shortAddress}
-                            </a>
+                                <Coins className="w-4 h-4" />
+                                Buy CLAW
+                            </Button>
                         </div>
                     </div>
                 </div>
