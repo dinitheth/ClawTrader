@@ -302,30 +302,22 @@
     }
   }
 
-  /* News Ticker Marquee Animation - SLOW speed for readability */
-  .animate-marquee {
-    animation: marquee 120s linear infinite;
+  /* News Ticker - Single track, no overlap possible */
+  .news-ticker-track {
+    animation: ticker-scroll 60s linear infinite;
+    will-change: transform;
   }
 
-  .animate-marquee2 {
-    animation: marquee2 120s linear infinite;
+  .news-ticker-track:hover {
+    animation-play-state: paused;
   }
 
-  @keyframes marquee {
+  @keyframes ticker-scroll {
     0% {
-      transform: translateX(0%);
+      transform: translateX(0);
     }
     100% {
-      transform: translateX(-100%);
-    }
-  }
-
-  @keyframes marquee2 {
-    0% {
-      transform: translateX(100%);
-    }
-    100% {
-      transform: translateX(0%);
+      transform: translateX(-50%);
     }
   }
 }

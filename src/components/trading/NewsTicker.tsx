@@ -39,6 +39,23 @@ const FALLBACK_NEWS: NewsItem[] = [
   { title: 'Layer 2 solutions see increased transaction volumes', link: '#', source: 'technology' },
 ];
 
+const NewsItemLink = ({ item }: { item: NewsItem }) => (
+  <a
+    href={item.link}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center shrink-0 mx-8 text-xs hover:text-primary transition-colors"
+  >
+    <span className="text-primary mr-2 font-bold">•</span>
+    <span className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
+      {item.title}
+    </span>
+    <span className="text-muted-foreground/50 ml-2 text-[10px] uppercase whitespace-nowrap">
+      {item.source}
+    </span>
+  </a>
+);
+
 export function NewsTicker() {
   const [news, setNews] = useState<NewsItem[]>(FALLBACK_NEWS);
   const hasFetched = useRef(false);
@@ -85,47 +102,19 @@ export function NewsTicker() {
     return null;
   }
 
+  // Single-track infinite scroll: duplicate content so when first set scrolls out,
+  // second set seamlessly fills in. Using one single div with CSS animation.
   return (
     <div className="w-full overflow-hidden bg-muted/20 border-y border-border/50 py-2">
-      <div className="relative flex overflow-hidden">
-        <div className="animate-marquee flex whitespace-nowrap">
-          {news.map((item, index) => (
-            <a
-              key={`news-${index}`}
-              href={item.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center mx-6 text-xs hover:text-primary transition-colors"
-            >
-              <span className="text-primary mr-2 font-bold">•</span>
-              <span className="text-muted-foreground hover:text-foreground transition-colors">
-                {item.title}
-              </span>
-              <span className="text-muted-foreground/50 ml-2 text-[10px] uppercase">
-                {item.source}
-              </span>
-            </a>
-          ))}
-        </div>
-        <div className="animate-marquee2 absolute top-0 flex whitespace-nowrap">
-          {news.map((item, index) => (
-            <a
-              key={`news-dup-${index}`}
-              href={item.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center mx-6 text-xs hover:text-primary transition-colors"
-            >
-              <span className="text-primary mr-2 font-bold">•</span>
-              <span className="text-muted-foreground hover:text-foreground transition-colors">
-                {item.title}
-              </span>
-              <span className="text-muted-foreground/50 ml-2 text-[10px] uppercase">
-                {item.source}
-              </span>
-            </a>
-          ))}
-        </div>
+      <div className="news-ticker-track flex">
+        {/* First copy */}
+        {news.map((item, i) => (
+          <NewsItemLink key={`a-${i}`} item={item} />
+        ))}
+        {/* Second copy for seamless loop */}
+        {news.map((item, i) => (
+          <NewsItemLink key={`b-${i}`} item={item} />
+        ))}
       </div>
     </div>
   );
