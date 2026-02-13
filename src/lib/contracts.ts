@@ -157,7 +157,7 @@ export const AGENT_FACTORY_ABI = [
   { name: 'totalAgents', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
 ] as const;
 
-// nad.fun BondingCurveRouter ABI (Monad Testnet)
+// nad.fun BondingCurveRouter ABI (Monad Testnet - v3, updated after genesis reset Dec 2025)
 export const BONDING_CURVE_ROUTER_ABI = [
   {
     name: 'create',
@@ -166,13 +166,14 @@ export const BONDING_CURVE_ROUTER_ABI = [
     inputs: [{
       name: 'params',
       type: 'tuple',
+      internalType: 'struct IBondingCurveRouter.TokenCreationParams',
       components: [
         { name: 'name', type: 'string' },
         { name: 'symbol', type: 'string' },
         { name: 'tokenURI', type: 'string' },
         { name: 'amountOut', type: 'uint256' },
         { name: 'salt', type: 'bytes32' },
-        { name: 'actionId', type: 'uint256' },
+        { name: 'actionId', type: 'uint8' },
       ],
     }],
     outputs: [
@@ -182,21 +183,22 @@ export const BONDING_CURVE_ROUTER_ABI = [
   },
 ] as const;
 
-// nad.fun CurveCreate event ABI (for parsing tx receipts)
+// nad.fun CurveCreate event ABI — official from https://nad.fun/abi.md
 export const CURVE_CREATE_EVENT_ABI = [
   {
     name: 'CurveCreate',
     type: 'event',
+    anonymous: false,
     inputs: [
-      { name: 'creator', type: 'address', indexed: true },
-      { name: 'token', type: 'address', indexed: true },
-      { name: 'pool', type: 'address', indexed: false },
-      { name: 'name', type: 'string', indexed: false },
-      { name: 'symbol', type: 'string', indexed: false },
-      { name: 'tokenURI', type: 'string', indexed: false },
-      { name: 'virtualMonReserve', type: 'uint256', indexed: false },
-      { name: 'virtualTokenReserve', type: 'uint256', indexed: false },
-      { name: 'targetTokenAmount', type: 'uint256', indexed: false },
+      { name: 'creator', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'token', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'pool', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'name', type: 'string', indexed: false, internalType: 'string' },
+      { name: 'symbol', type: 'string', indexed: false, internalType: 'string' },
+      { name: 'tokenURI', type: 'string', indexed: false, internalType: 'string' },
+      { name: 'virtualMon', type: 'uint256', indexed: false, internalType: 'uint256' },
+      { name: 'virtualToken', type: 'uint256', indexed: false, internalType: 'uint256' },
+      { name: 'targetTokenAmount', type: 'uint256', indexed: false, internalType: 'uint256' },
     ],
   },
 ] as const;

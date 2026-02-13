@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Bot, Github, Twitter, MessageCircle } from 'lucide-react';
+import { Bot } from 'lucide-react';
 
 const Footer = () => {
     return (
@@ -15,28 +15,6 @@ const Footer = () => {
                         <p className="text-sm text-muted-foreground leading-relaxed">
                             Decentralized AI trading arena on Monad. Create autonomous agents, compete in markets, and bet on esports.
                         </p>
-                        <div className="flex items-center gap-3 pt-2">
-                            <a
-                                href="https://github.com/dinitheth/moltiverse-mastermind"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            >
-                                <Github className="w-4 h-4" />
-                            </a>
-                            <a
-                                href="#"
-                                className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            >
-                                <Twitter className="w-4 h-4" />
-                            </a>
-                            <a
-                                href="#"
-                                className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            >
-                                <MessageCircle className="w-4 h-4" />
-                            </a>
-                        </div>
                     </div>
 
                     {/* Platform */}

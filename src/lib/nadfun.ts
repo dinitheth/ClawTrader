@@ -6,11 +6,15 @@ export const NAD_API = {
   MAINNET: 'https://api.nadapp.net',
 } as const;
 
-// Nad.fun contract addresses on Monad Testnet
+// Nad.fun contract addresses — TESTNET (from https://nad.fun/skill.md)
 export const NAD_CONTRACTS = {
   BONDING_CURVE_ROUTER: '0x865054F0F6A288adaAc30261731361EA7E908003',
-  CURVE: '0xA7283d07812a02AFB7C09B60f8896bCEA3F90aCE',
+  CURVE: '0x1228b0dc9481C11D3071E7A924B794CfB038994e',
   LENS: '0xB056d79CA5257589692699a46623F901a3BB76f1',
+  DEX_ROUTER: '0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2',
+  DEX_FACTORY: '0xd0a37cf728CE2902eB8d4F6f2afc76854048253b',
+  WMON: '0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd',
+  CREATOR_TREASURY: '0x24dFf9B68fA36f8400302e2babC3e049eA19459E',
 } as const;
 
 export interface TokenLaunchParams {
@@ -123,8 +127,8 @@ export async function checkAccessLevel(agentId: string, walletAddress: string): 
   }
 
   // Safely parse features_unlocked
-  const features = Array.isArray(data.features_unlocked) 
-    ? (data.features_unlocked as string[]) 
+  const features = Array.isArray(data.features_unlocked)
+    ? (data.features_unlocked as string[])
     : ['view_stats'];
 
   return {

@@ -307,12 +307,17 @@ Agent ID Generation:
 5. On confirmation, agent metadata saved to Supabase `agents` table
 6. Agent appears in the user's agent list
 
-**Token Launch Flow** (via nad.fun):
+**Token Launch Flow** (via nad.fun -- 5-Step Process):
 1. User opens LaunchTokenModal for a specific agent
 2. Fills in token name, symbol, and description
 3. Configures token utilities (revenue share %, governance toggle, access tier)
-4. Frontend calls `BondingCurveRouter.create()` with 1 MON deployment fee
-5. Transaction receipt parsed for `CurveCreate` event to extract token address
+4. Frontend executes the **nad.fun 5-step creation flow**:
+   - **Step 1**: Generate token image (512x512 PNG from agent avatar) and upload via `POST dev-api.nad.fun/agent/token/image`
+   - **Step 2**: Upload metadata (name, symbol, description, image_uri) via `POST dev-api.nad.fun/agent/token/metadata`
+   - **Step 3**: Mine salt via `POST dev-api.nad.fun/agent/salt` -- returns salt + predicted token address
+   - **Step 4**: Read deploy fee from `Curve.feeConfig()` (currently **10 MON** on testnet)
+   - **Step 5**: Create on-chain via `BondingCurveRouter.create()` with `actionId: 1` and deploy fee
+5. Transaction receipt parsed for `CurveCreate` event to extract token address (falls back to predicted address from step 3)
 6. `AgentFactory.setAgentToken(agentId, tokenAddress)` links token to agent on-chain
 7. Token metadata saved to Supabase (address, name, symbol, market cap, holders)
 
@@ -320,7 +325,7 @@ Agent ID Generation:
 - **View** -- Navigate to trading page with agent pre-selected
 - **Evolve** -- Update DNA values on-chain via `AgentFactory.evolveAgent()`
 - **Arena** -- Enter agent into head-to-head matches
-- **Launch Token** -- Create tradeable token on nad.fun bonding curve
+- **Launch Token** -- Create tradeable token on nad.fun bonding curve (10 MON deploy fee)
 
 ### Leaderboard
 
@@ -360,13 +365,17 @@ All contracts are deployed on **Monad Testnet** (Chain ID: `10143`).
 | TestSOL | `0xD02dB25175f69A1b1A03d6F6a8d4A566a99061Af` | Test Solana token (9 decimals, 500M supply) |
 | VaultB | `0x43236A83599Ce79557ad218ca1aF6109B2400d31` | USDC profit distribution vault |
 
-**nad.fun Contracts (Token Launch)**:
+**nad.fun Contracts (Token Launch -- Monad Testnet)**:
 
 | Contract | Address |
 |---|---|
 | BondingCurveRouter | `0x865054F0F6A288adaAc30261731361EA7E908003` |
-| Curve | `0xA7283d07812a02AFB7C09B60f8896bCEA3F90aCE` |
+| Curve | `0x1228b0dc9481C11D3071E7A924B794CfB038994e` |
 | Lens | `0xB056d79CA5257589692699a46623F901a3BB76f1` |
+| DEX Router | `0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2` |
+| DEX Factory | `0xd0a37cf728CE2902eB8d4F6f2afc76854048253b` |
+| WMON | `0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd` |
+| Creator Treasury | `0x24dFf9B68fA36f8400302e2babC3e049eA19459E` |
 
 ### AgentFactory
 
@@ -677,8 +686,8 @@ Interacts with nad.fun Lens contract to fetch token holder data, bonding curve p
 
 ```bash
 # Clone the repository
-git clone https://github.com/dinitheth/moltiverse-mastermind.git
-cd moltiverse-mastermind
+git clone https://github.com/dinitheth/ClawTrader-V2.git
+cd ClawTrader-V2
 
 # Install dependencies
 npm install
@@ -733,13 +742,69 @@ npx hardhat compile
 
 ## Deployment and Hosting
 
-### Frontend
+### Frontend (Vercel -- Recommended)
 
-The frontend is a static single-page application built with Vite. It can be deployed to any static hosting provider:
+The frontend is a Vite + React SPA. Deploy to **Vercel** in minutes:
 
-- **Build**: `npm run build` produces optimized static files in the `dist/` directory
-- **Hosting Options**: Vercel, Netlify, Cloudflare Pages, or any static file server
-- **Configuration**: Set environment variables on the hosting platform for Supabase credentials
+#### Step-by-Step Vercel Deployment
+
+1. **Push to GitHub** (if not already):
+   ```bash
+   git add .
+   git commit -m "Update for deployment"
+   git push origin main
+   ```
+
+2. **Sign up / Log in**: Go to [vercel.com](https://vercel.com) and sign in with your GitHub account.
+
+3. **Import Project**:
+   - Click **"Add New" → "Project"**
+   - Select the **ClawTrader-V2** repository from your GitHub
+   - Click **"Import"**
+
+4. **Configure Build Settings**:
+   | Setting | Value |
+   |---|---|
+   | Framework Preset | **Vite** |
+   | Build Command | `npm run build` |
+   | Output Directory | `dist` |
+   | Install Command | `npm install` |
+
+5. **Add Environment Variables**:
+   - Click **"Environment Variables"** and add:
+   
+   | Key | Value |
+   |---|---|
+   | `VITE_SUPABASE_URL` | Your Supabase project URL |
+   | `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous key |
+
+6. **Deploy**: Click **"Deploy"**. Vercel will build and deploy automatically.
+
+7. **Custom Domain** (Optional):
+   - Go to **Settings → Domains**
+   - Add your custom domain and follow the DNS instructions
+
+8. **Auto-Deployments**: Every push to `main` branch triggers an automatic redeployment.
+
+#### Vercel Configuration (vercel.json)
+
+For SPA routing, create a `vercel.json` in the project root:
+
+```json
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
+
+This ensures all routes are handled by React Router instead of returning 404.
+
+### Other Hosting Options
+
+- **Netlify**: Connect GitHub repo, set build command to `npm run build`, publish directory to `dist`
+- **Cloudflare Pages**: Similar setup, connect repo and configure build settings
+- **Self-hosted**: Run `npm run build` and serve the `dist/` folder with any static file server (Nginx, Apache, etc.)
 
 ### Backend (Supabase)
 
@@ -767,6 +832,17 @@ The following environment variables are required:
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous API key |
 
 PandaScore API token is configured directly in `src/lib/pandaScore.ts`. CoinGecko uses the free public API and requires no key.
+
+---
+
+## Resources
+
+| Resource | Link |
+|---|---|
+| Documentation | [clawtrader.notion.site/documentation](https://clawtrader.notion.site/documentation) |
+| GitHub | [github.com/dinitheth/ClawTrader-V2](https://github.com/dinitheth/ClawTrader-V2) |
+| nad.fun | [nad.fun](https://nad.fun/) |
+| Monad Explorer | [testnet.monadexplorer.com](https://testnet.monadexplorer.com) |
 
 ---
 

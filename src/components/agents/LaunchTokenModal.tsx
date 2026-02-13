@@ -20,7 +20,7 @@ import {
   uuidToBytes32,
 } from '@/lib/contracts';
 import { NAD_CONTRACTS } from '@/lib/wagmi';
-import { keccak256, toHex, parseEther, decodeEventLog } from 'viem';
+import { decodeEventLog } from 'viem';
 
 interface LaunchTokenModalProps {
   open: boolean;
@@ -80,25 +80,142 @@ export function LaunchTokenModal({ open, onOpenChange, agent, onSuccess }: Launc
     let tokenAddress: `0x${string}` | null = null;
 
     try {
-      // ═══ Step 1: Create token on nad.fun BondingCurveRouter ═══
+      // ═══ nad.fun Official 4-Step Token Creation Flow ═══
+      // Ref: https://nad.fun/create.md
+
+      const NAD_API_URL = 'https://dev-api.nad.fun'; // testnet API
+
+      // ═══ Step 1: Generate & upload token image to nad.fun API ═══
       setTxStep('creating');
+      console.log('Step 1: Generating token image from agent avatar...');
 
-      // Generate random salt for token creation
-      const salt = keccak256(toHex(`${agent.id}-${tokenSymbol}-${Date.now()}`));
+      // Generate a 512x512 PNG from the agent's emoji avatar
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d')!;
 
-      // Build metadata URI (JSON with token info)
-      const metadata = {
+      // Dark gradient background
+      const gradient = ctx.createRadialGradient(256, 256, 50, 256, 256, 360);
+      gradient.addColorStop(0, '#1a1a2e');
+      gradient.addColorStop(1, '#0f0f23');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Draw emoji avatar large and centered
+      ctx.font = '200px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(agent.avatar || '🦞', 256, 240);
+
+      // Draw token symbol below
+      ctx.font = 'bold 48px sans-serif';
+      ctx.fillStyle = '#00ff88';
+      ctx.fillText(`$${tokenSymbol}`, 256, 420);
+
+      // Convert canvas to PNG blob
+      const imageBlob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), 'image/png');
+      });
+
+      console.log('Uploading image to nad.fun API...');
+      const imageRes = await fetch(`${NAD_API_URL}/agent/token/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/png' },
+        body: imageBlob,
+      });
+
+      if (!imageRes.ok) {
+        const errText = await imageRes.text();
+        throw new Error(`Image upload failed: ${errText}`);
+      }
+
+      const { image_uri } = await imageRes.json();
+      console.log('Image URI:', image_uri);
+
+      // ═══ Step 2: Upload metadata to nad.fun API ═══
+      console.log('Step 2: Uploading metadata to nad.fun API...');
+
+      const metadataPayload = {
+        image_uri,
         name: tokenName,
         symbol: tokenSymbol,
         description: description || `AI Trading Agent token for ${agent.name}`,
-        image: '', // Agent avatar URL if available
-        agent_id: agent.id,
-        agent_name: agent.name,
       };
-      const tokenURI = `data:application/json;base64,${btoa(JSON.stringify(metadata))}`;
 
-      // Deploy fee: 1 MON on testnet (covers creation + initial buy)
-      const deployValue = parseEther('1');
+      const metadataRes = await fetch(`${NAD_API_URL}/agent/token/metadata`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(metadataPayload),
+      });
+
+      if (!metadataRes.ok) {
+        const errText = await metadataRes.text();
+        throw new Error(`Metadata upload failed: ${errText}`);
+      }
+
+      const { metadata_uri } = await metadataRes.json();
+      console.log('Metadata URI:', metadata_uri);
+
+      // ═══ Step 3: Mine salt via nad.fun API ═══
+      console.log('Step 3: Mining salt...');
+
+      const saltRes = await fetch(`${NAD_API_URL}/agent/salt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          creator: address,
+          name: tokenName,
+          symbol: tokenSymbol,
+          metadata_uri,
+        }),
+      });
+
+      if (!saltRes.ok) {
+        const errText = await saltRes.text();
+        throw new Error(`Salt mining failed: ${errText}`);
+      }
+
+      const { salt, address: predictedAddress } = await saltRes.json();
+      console.log('Salt:', salt, 'Predicted token address:', predictedAddress);
+
+      // ═══ Step 4: Get deploy fee from Curve contract ═══
+      console.log('Step 4: Fetching deploy fee from Curve contract...');
+
+      const CURVE_ADDRESS = NAD_CONTRACTS.CURVE as `0x${string}`;
+      let deployFeeAmount: bigint;
+
+      try {
+        if (publicClient) {
+          const feeConfig = await publicClient.readContract({
+            address: CURVE_ADDRESS,
+            abi: [{
+              name: 'feeConfig',
+              type: 'function',
+              stateMutability: 'view',
+              inputs: [],
+              outputs: [
+                { name: 'deployFeeAmount', type: 'uint256' },
+                { name: 'graduateFeeAmount', type: 'uint256' },
+                { name: 'protocolFee', type: 'uint24' },
+              ],
+            }],
+            functionName: 'feeConfig',
+          });
+          deployFeeAmount = (feeConfig as any)[0] as bigint;
+          console.log('Deploy fee from contract:', deployFeeAmount.toString());
+        } else {
+          // Fallback: testnet deploy fee = 10 MON (verified via RPC)
+          deployFeeAmount = BigInt('10000000000000000000');
+          console.log('Using fallback deploy fee: 10 MON');
+        }
+      } catch (feeErr) {
+        console.warn('Could not read feeConfig, using fallback:', feeErr);
+        deployFeeAmount = BigInt('10000000000000000000');
+      }
+
+      // ═══ Step 4: Create token on-chain via BondingCurveRouter ═══
+      console.log('Step 4: Creating token on-chain...');
 
       const createTxHash = await writeContractAsync({
         address: ROUTER_ADDRESS,
@@ -107,13 +224,15 @@ export function LaunchTokenModal({ open, onOpenChange, agent, onSuccess }: Launc
         args: [{
           name: tokenName,
           symbol: tokenSymbol,
-          tokenURI,
+          tokenURI: metadata_uri,
           amountOut: BigInt(0), // No initial buy
-          salt,
-          actionId: BigInt(0),
+          salt: salt as `0x${string}`,
+          actionId: 1, // Must be 1 for token creation (per nad.fun docs)
         }],
-        value: deployValue,
+        value: deployFeeAmount,
       });
+
+      console.log('Create tx hash:', createTxHash);
 
       // ═══ Step 2: Wait for confirmation & parse CurveCreate event ═══
       setTxStep('confirming');
@@ -121,7 +240,13 @@ export function LaunchTokenModal({ open, onOpenChange, agent, onSuccess }: Launc
       if (publicClient) {
         receipt = await publicClient.waitForTransactionReceipt({ hash: createTxHash });
         console.log('Token creation receipt:', receipt);
+        console.log('Receipt status:', receipt.status);
         console.log('Receipt logs count:', receipt.logs.length);
+
+        // Check if the transaction reverted
+        if (receipt.status === 'reverted') {
+          throw new Error('Transaction reverted on-chain. The deploy fee may be insufficient or the salt/params are invalid. Check the tx on explorer: ' + createTxHash);
+        }
 
         // Strategy 1: Parse CurveCreate event from ANY log (event may come from BondingCurve, not Router)
         for (const log of receipt.logs) {
@@ -175,8 +300,14 @@ export function LaunchTokenModal({ open, onOpenChange, agent, onSuccess }: Launc
         }
       }
 
+      // Fallback: Use predicted address from salt mining
+      if (!tokenAddress && predictedAddress) {
+        tokenAddress = predictedAddress as `0x${string}`;
+        console.log('Using predicted address from salt mining:', tokenAddress);
+      }
+
       if (!tokenAddress) {
-        throw new Error('Could not determine token address from transaction. Please check the transaction on explorer.');
+        throw new Error('Could not determine token address from transaction. Check tx: ' + createTxHash);
       }
 
       // ═══ Step 3: Link token to agent on AgentFactory ═══
@@ -244,7 +375,7 @@ export function LaunchTokenModal({ open, onOpenChange, agent, onSuccess }: Launc
         : error?.message?.includes('Token already set')
           ? 'This agent already has a token linked'
           : error?.message?.includes('insufficient')
-            ? 'Insufficient MON balance. You need ~1 MON for deployment.'
+            ? 'Insufficient MON balance. You need ~10 MON for deployment.'
             : error?.message || 'Token launch failed. Please try again.';
       toast({ title: 'Launch Failed', description: msg, variant: 'destructive' });
       setTxStep('idle');
@@ -337,7 +468,7 @@ export function LaunchTokenModal({ open, onOpenChange, agent, onSuccess }: Launc
             <div className="p-3 rounded-lg bg-muted/20 border border-border text-xs space-y-1">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Deploy Cost</span>
-                <span className="font-mono">~1 MON</span>
+                <span className="font-mono">~10 MON</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Network</span>
@@ -484,7 +615,7 @@ export function LaunchTokenModal({ open, onOpenChange, agent, onSuccess }: Launc
             ) : (
               <>
                 <Rocket className="w-4 h-4" />
-                Launch on nad.fun (1 MON)
+                Launch on nad.fun (10 MON)
               </>
             )}
           </Button>
