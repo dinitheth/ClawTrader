@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity } from 'lucide-react';
 
 interface ServerHealth {
-    status: 'online' | 'offline' | 'not-configured';
+    status: 'online' | 'offline' | 'checking';
     timestamp?: string;
     uptime?: number;
 }
@@ -13,27 +13,34 @@ const SERVER_URLS = {
 };
 
 export function ServerStatus() {
-    const [tradingStatus, setTradingStatus] = useState<ServerHealth>({ status: 'offline' });
-    const [settlementStatus, setSettlementStatus] = useState<ServerHealth>({ status: 'offline' });
+    const [tradingStatus, setTradingStatus] = useState<ServerHealth>({ status: 'checking' });
+    const [settlementStatus, setSettlementStatus] = useState<ServerHealth>({ status: 'checking' });
 
     const checkHealth = async (url: string): Promise<ServerHealth> => {
-        // If we're on HTTPS and the server URL is HTTP, the browser will block it (mixed content)
-        // Show "not-configured" instead of false "offline"
+        const healthUrl = `${url}/health`;
+
+        // On HTTPS pages, HTTP requests get blocked (mixed content).
+        // Use a CORS proxy to make the actual request server-side — this gives REAL status.
         const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
-        const isHttpUrl = url.startsWith('http://');
-        if (isHttpsPage && isHttpUrl) {
-            return { status: 'not-configured' };
-        }
+        const isHttpUrl = healthUrl.startsWith('http://');
+        const fetchUrl = (isHttpsPage && isHttpUrl)
+            ? `https://corsproxy.io/?url=${encodeURIComponent(healthUrl)}`
+            : healthUrl;
 
         try {
-            const response = await fetch(`${url}/health`, {
+            const response = await fetch(fetchUrl, {
                 method: 'GET',
-                signal: AbortSignal.timeout(5000) // 5 second timeout
+                signal: AbortSignal.timeout(8000) // 8 second timeout (proxy adds latency)
             });
 
             if (response.ok) {
-                const data = await response.json();
-                return { status: 'online', timestamp: data.timestamp, uptime: data.uptime };
+                try {
+                    const data = await response.json();
+                    return { status: 'online', timestamp: data.timestamp, uptime: data.uptime };
+                } catch {
+                    // Response was OK but not JSON — server is still responding
+                    return { status: 'online' };
+                }
             }
             return { status: 'offline' };
         } catch (error) {
@@ -52,12 +59,8 @@ export function ServerStatus() {
     };
 
     useEffect(() => {
-        // Initial check
         checkAllServers();
-
-        // Poll every 30 seconds
         const interval = setInterval(checkAllServers, 30000);
-
         return () => clearInterval(interval);
     }, []);
 
@@ -71,7 +74,7 @@ export function ServerStatus() {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'online': return 'bg-green-500 animate-pulse';
-            case 'not-configured': return 'bg-yellow-500';
+            case 'checking': return 'bg-yellow-500 animate-pulse';
             default: return 'bg-red-500';
         }
     };
@@ -79,16 +82,8 @@ export function ServerStatus() {
     const getStatusTextColor = (status: string) => {
         switch (status) {
             case 'online': return 'text-green-500';
-            case 'not-configured': return 'text-yellow-500';
+            case 'checking': return 'text-yellow-500';
             default: return 'text-red-500';
-        }
-    };
-
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'online': return 'online';
-            case 'not-configured': return 'requires HTTPS backend';
-            default: return 'offline';
         }
     };
 
@@ -107,7 +102,7 @@ export function ServerStatus() {
                         <div className="font-semibold text-foreground">Trading Server</div>
                         <div className="text-muted-foreground">
                             Status: <span className={getStatusTextColor(tradingStatus.status)}>
-                                {getStatusLabel(tradingStatus.status)}
+                                {tradingStatus.status}
                             </span>
                         </div>
                         {tradingStatus.uptime && (
@@ -132,7 +127,7 @@ export function ServerStatus() {
                         <div className="font-semibold text-foreground">Settlement Server</div>
                         <div className="text-muted-foreground">
                             Status: <span className={getStatusTextColor(settlementStatus.status)}>
-                                {getStatusLabel(settlementStatus.status)}
+                                {settlementStatus.status}
                             </span>
                         </div>
                         {settlementStatus.uptime && (

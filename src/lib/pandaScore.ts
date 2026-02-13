@@ -3,6 +3,12 @@
 
 const PANDASCORE_TOKEN = 'QlP9wl3Oh5Zl97LiUyFy7HSQ1L4NIZ0McJMYoXf904QIJGoE0bk';
 const BASE_URL = 'https://api.pandascore.co';
+
+// PandaScore API doesn't send CORS headers, so browser requests from
+// deployed sites get blocked. Use a CORS proxy in production.
+const isLocalhost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 const CACHE_TTL = 60_000; // 60 seconds
 
 // ── Types ────────────────────────────────────────────────────────
@@ -147,7 +153,10 @@ async function fetchPandaScore<T>(endpoint: string, params: Record<string, strin
         ...params,
     });
 
-    const url = `${BASE_URL}${endpoint}?${searchParams}`;
+    // Build the full PandaScore URL first
+    const pandaUrl = `${BASE_URL}${endpoint}?${searchParams}`;
+    // In production, wrap with CORS proxy since PandaScore doesn't send CORS headers
+    const url = isLocalhost ? pandaUrl : `https://corsproxy.io/?url=${encodeURIComponent(pandaUrl)}`;
 
     const response = await fetch(url);
 

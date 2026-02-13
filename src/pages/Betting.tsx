@@ -119,9 +119,11 @@ const Betting = () => {
 
 
   // ── Load matches ───────────────────────────────────────────────
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const loadMatches = useCallback(async (game?: GameSlug) => {
     const slug = game ?? activeGame;
     try {
+      setFetchError(null);
       const [live, upcoming] = await Promise.all([
         fetchRunningMatches(slug),
         fetchUpcomingMatches(slug),
@@ -131,9 +133,9 @@ const Betting = () => {
       setLastRefresh(new Date());
     } catch (error: any) {
       console.error('PandaScore error:', error);
-      if (error.message?.includes('Rate limit')) {
-        toast({ title: '⚠️ Rate Limited', description: 'Matches will refresh shortly.', variant: 'destructive' });
-      }
+      const errMsg = error?.message || 'Unknown error loading matches';
+      setFetchError(errMsg);
+      toast({ title: '⚠️ Match Load Failed', description: errMsg, variant: 'destructive' });
     } finally { setIsLoading(false); }
   }, [activeGame, toast]);
 
