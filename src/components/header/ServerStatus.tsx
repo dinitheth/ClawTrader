@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity } from 'lucide-react';
 
 interface ServerHealth {
-    status: 'online' | 'offline';
+    status: 'online' | 'offline' | 'not-configured';
     timestamp?: string;
     uptime?: number;
 }
@@ -17,6 +17,14 @@ export function ServerStatus() {
     const [settlementStatus, setSettlementStatus] = useState<ServerHealth>({ status: 'offline' });
 
     const checkHealth = async (url: string): Promise<ServerHealth> => {
+        // If we're on HTTPS and the server URL is HTTP, the browser will block it (mixed content)
+        // Show "not-configured" instead of false "offline"
+        const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
+        const isHttpUrl = url.startsWith('http://');
+        if (isHttpsPage && isHttpUrl) {
+            return { status: 'not-configured' };
+        }
+
         try {
             const response = await fetch(`${url}/health`, {
                 method: 'GET',
@@ -60,15 +68,36 @@ export function ServerStatus() {
         return `${hours}h ${minutes}m`;
     };
 
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'online': return 'bg-green-500 animate-pulse';
+            case 'not-configured': return 'bg-yellow-500';
+            default: return 'bg-red-500';
+        }
+    };
+
+    const getStatusTextColor = (status: string) => {
+        switch (status) {
+            case 'online': return 'text-green-500';
+            case 'not-configured': return 'text-yellow-500';
+            default: return 'text-red-500';
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'online': return 'online';
+            case 'not-configured': return 'requires HTTPS backend';
+            default: return 'offline';
+        }
+    };
+
     return (
         <div className="flex items-center gap-3">
             {/* Trading Server */}
             <div className="group relative">
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50 border border-border/50 hover:border-border transition-colors">
-                    <div className={`w-2 h-2 rounded-full ${tradingStatus.status === 'online'
-                            ? 'bg-green-500 animate-pulse'
-                            : 'bg-red-500'
-                        }`} />
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(tradingStatus.status)}`} />
                     <Activity className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
 
@@ -77,8 +106,8 @@ export function ServerStatus() {
                     <div className="text-xs space-y-1">
                         <div className="font-semibold text-foreground">Trading Server</div>
                         <div className="text-muted-foreground">
-                            Status: <span className={tradingStatus.status === 'online' ? 'text-green-500' : 'text-red-500'}>
-                                {tradingStatus.status}
+                            Status: <span className={getStatusTextColor(tradingStatus.status)}>
+                                {getStatusLabel(tradingStatus.status)}
                             </span>
                         </div>
                         {tradingStatus.uptime && (
@@ -93,10 +122,7 @@ export function ServerStatus() {
             {/* Settlement Server */}
             <div className="group relative">
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50 border border-border/50 hover:border-border transition-colors">
-                    <div className={`w-2 h-2 rounded-full ${settlementStatus.status === 'online'
-                            ? 'bg-green-500 animate-pulse'
-                            : 'bg-red-500'
-                        }`} />
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(settlementStatus.status)}`} />
                     <Activity className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
 
@@ -105,8 +131,8 @@ export function ServerStatus() {
                     <div className="text-xs space-y-1">
                         <div className="font-semibold text-foreground">Settlement Server</div>
                         <div className="text-muted-foreground">
-                            Status: <span className={settlementStatus.status === 'online' ? 'text-green-500' : 'text-red-500'}>
-                                {settlementStatus.status}
+                            Status: <span className={getStatusTextColor(settlementStatus.status)}>
+                                {getStatusLabel(settlementStatus.status)}
                             </span>
                         </div>
                         {settlementStatus.uptime && (

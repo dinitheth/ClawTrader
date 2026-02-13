@@ -107,7 +107,7 @@ export const GAME_FILTERS = [
     { slug: 'valorant', label: 'Valorant', icon: '🎯' },
     { slug: 'rl', label: 'Rocket League', icon: '🚗' },
     { slug: 'overwatch', label: 'Overwatch', icon: '🦸' },
-    { slug: 'r6siege', label: 'Rainbow Six', icon: '🏰' },
+    { slug: 'r6-siege', label: 'Rainbow Six', icon: '🏰' },
 ] as const;
 
 export type GameSlug = typeof GAME_FILTERS[number]['slug'];
