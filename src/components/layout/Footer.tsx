@@ -41,7 +41,7 @@ const Footer = () => {
                         <h3 className="font-semibold text-sm uppercase tracking-wider text-foreground">Resources</h3>
                         <nav className="flex flex-col gap-2.5">
                             <a
-                                href="https://github.com/dinitheth/moltiverse-mastermind"
+                                href="https://clawtrader.notion.site/documentation"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -49,7 +49,7 @@ const Footer = () => {
                                 Documentation
                             </a>
                             <a
-                                href="https://github.com/dinitheth/moltiverse-mastermind"
+                                href="https://github.com/dinitheth/ClawTrader-V2"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -65,7 +65,7 @@ const Footer = () => {
                                 Monad Explorer
                             </a>
                             <a
-                                href="https://testnet.nad.fun"
+                                href="https://nad.fun/"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
