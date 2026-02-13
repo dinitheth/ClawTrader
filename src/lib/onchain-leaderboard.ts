@@ -1,12 +1,34 @@
 /**
  * On-Chain Leaderboard Service
- * Fetches real on-chain vault balances for all agents from the trading server.
- * Replaces the old Supabase-only match stats with real USDC vault data.
+ * Reads real vault USDC balances directly from the AgentVault contract on Monad Testnet.
+ * Uses viem createPublicClient — no trading server dependency.
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { createPublicClient, http, formatUnits } from 'viem';
+import { CONTRACTS, AGENT_VAULT_ABI } from '@/lib/contracts';
 
-const TRADING_SERVER_URL = import.meta.env.VITE_TRADING_SERVER_URL || 'http://96.30.205.215:3001';
+// Monad Testnet chain definition for viem
+const monadTestnet = {
+    id: 10143,
+    name: 'Monad Testnet',
+    nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
+    rpcUrls: {
+        default: { http: ['https://testnet-rpc.monad.xyz'] },
+    },
+} as const;
+
+// Create a standalone viem client (works without wallet connection)
+const publicClient = createPublicClient({
+    chain: monadTestnet,
+    transport: http('https://testnet-rpc.monad.xyz'),
+});
+
+/** Convert UUID string to bytes32 hex (same logic as trading server) */
+function uuidToBytes32(uuid: string): `0x${string}` {
+    const hex = uuid.replace(/-/g, '');
+    return `0x${hex.padEnd(64, '0')}` as `0x${string}`;
+}
 
 export interface OnChainAgentData {
     id: string;
@@ -15,39 +37,23 @@ export interface OnChainAgentData {
     generation: number;
     personality: string;
     created_at: string;
-    owner_wallet: string | null;
     // On-chain data
     vaultBalanceUSDC: number;
-    tokenBalances: Record<string, number>;
-    totalValueUSDC: number;
-    // Supabase trade tracking
+    // Supabase tracking
     totalTrades: number;
     // Computed
     pnlPercent: number;
 }
 
 /**
- * Fetch all agents with owner wallet addresses from Supabase,
- * then get their on-chain vault balances from the trading server.
+ * Fetch all agents from Supabase, then read their on-chain vault balances
+ * directly from the AgentVault contract using getAgentTotalBalance(bytes32).
  */
 export async function fetchOnChainLeaderboard(): Promise<OnChainAgentData[]> {
-    // Step 1: Get all agents with their owner's profile (for wallet_address)
+    // Step 1: Get all agents from Supabase
     const { data: agents, error } = await supabase
         .from('agents')
-        .select(`
-      id,
-      name,
-      avatar,
-      generation,
-      personality,
-      created_at,
-      total_matches,
-      balance,
-      owner_id,
-      profiles:owner_id (
-        wallet_address
-      )
-    `)
+        .select('id, name, avatar, generation, personality, created_at, total_matches, balance')
         .order('created_at', { ascending: true });
 
     if (error) {
@@ -57,39 +63,28 @@ export async function fetchOnChainLeaderboard(): Promise<OnChainAgentData[]> {
 
     if (!agents || agents.length === 0) return [];
 
-    // Step 2: For each agent with a wallet, fetch on-chain balances from trading server
+    // Step 2: Batch-read on-chain balances for all agents
     const results: OnChainAgentData[] = await Promise.all(
         agents.map(async (agent: any) => {
-            const walletAddress = agent.profiles?.wallet_address || null;
-
             let vaultBalanceUSDC = 0;
-            let tokenBalances: Record<string, number> = {};
 
-            if (walletAddress) {
-                try {
-                    const resp = await fetch(
-                        `${TRADING_SERVER_URL}/api/agent-balances/${walletAddress}/${agent.id}`,
-                        { signal: AbortSignal.timeout(5000) }
-                    );
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        vaultBalanceUSDC = data.usdc || 0;
-                        tokenBalances = data.tokens || {};
-                    }
-                } catch (err) {
-                    // Trading server may be down — show 0 balance gracefully
-                    console.warn(`Failed to fetch on-chain balance for ${agent.name}:`, err);
-                }
+            try {
+                const agentIdBytes32 = uuidToBytes32(agent.id);
+                const rawBalance = await publicClient.readContract({
+                    address: CONTRACTS.AGENT_VAULT.address,
+                    abi: AGENT_VAULT_ABI,
+                    functionName: 'getAgentTotalBalance',
+                    args: [agentIdBytes32],
+                });
+                // USDC has 6 decimals
+                vaultBalanceUSDC = parseFloat(formatUnits(rawBalance as bigint, 6));
+            } catch (err) {
+                console.warn(`Failed to read vault balance for ${agent.name}:`, err);
             }
 
-            // Total token value is approximated — just show vault USDC for now
-            // Token holdings are shown separately
-            const totalValueUSDC = vaultBalanceUSDC;
-
-            // Use total_matches from supabase as trade count (these are actual trades now)
             const totalTrades = agent.total_matches || 0;
 
-            // P&L: compare current vault balance to initial deposit (balance field in supabase stores initial)
+            // P&L: compare current vault balance to initial deposit
             const initialBalance = Number(agent.balance || 0);
             let pnlPercent = 0;
             if (initialBalance > 0 && vaultBalanceUSDC > 0) {
@@ -103,10 +98,7 @@ export async function fetchOnChainLeaderboard(): Promise<OnChainAgentData[]> {
                 generation: agent.generation,
                 personality: agent.personality,
                 created_at: agent.created_at,
-                owner_wallet: walletAddress,
                 vaultBalanceUSDC,
-                tokenBalances,
-                totalValueUSDC,
                 totalTrades,
                 pnlPercent,
             };
